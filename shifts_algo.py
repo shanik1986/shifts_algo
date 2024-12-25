@@ -10,13 +10,13 @@ shifts = ["Morning", "Noon", "Evening", "Night"]
 # Define shifts per day
 shifts_per_day = {
     
-   "Last Saturday": {"Night": 3},
-   "Sunday": {"Morning": 3, "Noon": 2, "Evening": 1, "Night": 4},
-    "Monday": {"Morning": 2, "Noon": 1, "Evening": 1, "Night": 3},
-    "Tuesday": {"Morning": 3, "Noon": 1, "Evening": 2, "Night": 4},
-    "Wednesday": {"Morning": 3, "Noon": 2, "Evening": 2, "Night": 4},
-    "Thursday": {"Morning": 3, "Noon": 2, "Evening": 2, "Night": 4},
-   "Friday": {"Morning": 2, "Noon": 2, "Evening": 0, "Night": 2},
+   "Last Saturday": {"Night": 4},
+   "Sunday": {"Morning": 3, "Noon": 2, "Evening": 2, "Night": 4},
+    "Monday": {"Morning": 3, "Noon": 2, "Evening": 2, "Night": 4},
+    "Tuesday": {"Morning": 3, "Noon": 2, "Evening": 2, "Night": 4},
+    "Wednesday": {"Morning": 2, "Noon": 2, "Evening": 2, "Night": 4},
+    "Thursday": {"Morning": 2, "Noon": 2, "Evening": 2, "Night": 4},
+   "Friday": {"Morning": 2, "Noon": 2, "Evening": 2, "Night": 4},
     "Saturday": {"Morning": 2, "Noon": 2, "Evening": 2},
 }
 
