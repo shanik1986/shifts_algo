@@ -38,7 +38,7 @@ shifts_per_day = {
 #  }
 
 
-debug_mode = True
+debug_mode = False
 def debug_log(message):
     if debug_mode:
         print(message)
@@ -85,15 +85,15 @@ def rank_shifts(remaining_shifts, shift_counts, people):
                 else:
                     constraint_score = 0  # Max constraint if no people
                 rankings.append((constraint_score, (day, shift, needed)))
-                debug_log(f"Shift: {day} {shift}, Needed: {needed}, "
+                print(f"Shift: {day} {shift}, Needed: {needed}, "
                       f"Available people: {len(available_people)}, Score: {constraint_score}")
     
     sorted_rankings = sorted(rankings, key=lambda x: x[0])
     # sorted_rankings = rankings
-    debug_log("\n=== Ranked Shifts ===")
+    print("\n=== Ranked Shifts ===")
     for rank, (score, (day, shift, needed)) in enumerate(sorted_rankings, 1):
-        debug_log(f"Rank {rank}: {day} {shift} with score {score}")
-    debug_log("=====================\n")
+        print(f"Rank {rank}: {day} {shift} with score {score}")
+    print("=====================\n")
     return sorted_rankings
 
 # def get_available_people(day, shift, people, shift_counts):
@@ -124,6 +124,7 @@ def get_available_people(day, shift, people, shift_counts, night_counts, current
     eligible_people = []
     day_index = days.index(day)
     previous_day = days[day_index - 1] if day_index > 0 else False
+    next_day = days[day_index + 1] if day_index < len(days) - 1 else False
 
     for person in people:
         # Check availability
@@ -140,12 +141,20 @@ def get_available_people(day, shift, people, shift_counts, night_counts, current
             continue
         
         
-        # Validate night-to-morning constraint
+        # Validate night-to-morning constraint for morning shifts
         if shift == "Morning" and previous_day:
             previous_night_assignments = current_assignments[previous_day]["Night"]
             debug_log(f"Checking night-to-morning constraint for {person['name']} on {day} {shift}: {previous_day} Night = {previous_night_assignments}")
             if person in previous_night_assignments:
                 debug_log(f"{person['name']} excluded from {day} {shift} because of a night shift on {previous_day}")
+                continue
+        
+        # Validate night to morning constraint for night shifts
+        if shift == "Night" and next_day:
+            next_morning_assignments = current_assignments[next_day]["Morning"]
+            debug_log(f"Checking night-to-morning constraint for {person['name']} on {day} {shift}: {next_day} Morning = {next_morning_assignments}")
+            if person in next_morning_assignments:
+                debug_log(f"{person['name']} excluded from {day} {shift} because of a morning shift on {next_day}")
                 continue
 
         # Add eligible person
@@ -176,9 +185,11 @@ def validate_night_to_morning_constraint(current_assignments, day, shift, assign
         
         next_day = days[day_index + 1]
         next_morning_people = [p["name"] for p in current_assignments[next_day]["Morning"]]
-        for person in assigned:
+        for person in assigned_people:
             if person["name"] in next_morning_people:
                 debug_log(f"Constraint Violated During Assignment: {person['name']} is assigned to both {next_day} Morning and {day} Night!")
+                return False
+        return True
 def validate_remaining_shifts(remaining_shifts, people, shift_counts):
     """
     Validate that all remaining shifts have enough eligible people to fill them.
@@ -188,10 +199,10 @@ def validate_remaining_shifts(remaining_shifts, people, shift_counts):
             if needed > 0:  # Only check shifts that still need people
                 eligible_people = get_available_people(day,shift, people, shift_counts, night_counts, current_assignments)
                 if len(eligible_people) < needed:
-                    debug_log(f"Validation failed: {day} {shift} needs {needed} people, "
+                    print(f"Validation failed: {day} {shift} needs {needed} people, "
                           f"but only {len(eligible_people)} are available.")
                     return False
-    debug_log("Validation passed: All shifts have enough eligible people.")
+    print("Validation passed: All shifts have enough eligible people.")
     return True
 
 def get_previous_day(days, day):
