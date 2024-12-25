@@ -268,13 +268,6 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
 
     # Get eligible people for this shift
     eligible_people = get_available_people(day, shift, people, shift_counts, night_counts, current_assignments)
-
-    # Sort eligible people based on their flexibility
-    eligible_people.sort(key=lambda p: len([
-    (day, shift) for day, shifts in remaining_shifts.items()
-    for shift, needed in shifts.items() if needed > 0 and (day, shift) not in p["unavailable"]
-]))
-
     debug_log(f"Eligible people for {day} {shift}: {[p['name'] for p in eligible_people]}")
 
     # If not enough people are available, backtrack
@@ -282,8 +275,30 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
         debug_log(f"Not enough eligible people for {day} {shift}. Backtracking...")
         return False
 
-    # Try all combinations of eligible people for this shift
+    # Compute constraint scores for each eligible person
+    person_scores = {p["name"]: calculate_person_constraint(p, remaining_shifts) for p in eligible_people}
+
+    # Generate all combinations and calculate their constraint scores
+    combo_scores = []
     for combo in combinations(eligible_people, needed):
+        combo_score = sum(person_scores[p["name"]] for p in combo)  # Sum constraint scores of people in the combo
+        combo_scores.append((combo_score, list(combo)))
+
+    # Sort combinations by their total constraint score (lowest score first)
+    combo_scores.sort(key=lambda x: x[0])
+
+    
+#     # Sort eligible people based on their flexibility
+#     eligible_people.sort(key=lambda p: len([
+#     (day, shift) for day, shifts in remaining_shifts.items()
+#     for shift, needed in shifts.items() if needed > 0 and (day, shift) not in p["unavailable"]
+# ]))
+
+
+
+
+    # Try all combinations of eligible people for this shift
+    for combo_score, combo in combo_scores:
         debug_log(f"Trying combination: {[p['name'] for p in combo]} for {day} {shift}")
         # Validate night-to-morning constraint for morning and night shifts
         if shift == "Morning" or shift == "Night":
