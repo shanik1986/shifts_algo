@@ -1,4 +1,5 @@
 from import_constraints import structured_data
+from itertools import combinations
 import sys
 
 # Define constants for days and shifts
@@ -226,6 +227,19 @@ def validate_final_constraints(current_assignments):
     return True
 
 
+def calculate_person_constraint(person, remaining_shifts):
+    """
+    Calculate the constraint score for a person based on the number of shifts
+    they are eligible for compared to their maximum shifts.
+    """
+    available_shifts = [
+        (day, shift) for day, shifts in remaining_shifts.items()
+        for shift, needed in shifts.items()
+        if needed > 0 and (day, shift) not in person["unavailable"]
+    ]
+    return len(available_shifts) / person["max_shifts"] if person["max_shifts"] > 0 else float("inf")
+
+
 def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, current_assignments, shift_order, index=0):
     """
     Assign people to shifts using backtracking to ensure all constraints are satisfied.
@@ -269,7 +283,6 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
         return False
 
     # Try all combinations of eligible people for this shift
-    from itertools import combinations
     for combo in combinations(eligible_people, needed):
         debug_log(f"Trying combination: {[p['name'] for p in combo]} for {day} {shift}")
         # Validate night-to-morning constraint for morning and night shifts
