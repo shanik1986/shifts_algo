@@ -1,4 +1,4 @@
-from import_constraints import structured_data
+# from import_constraints import structured_data
 import sys
 
 # Define constants for days and shifts
@@ -27,9 +27,9 @@ shifts = ["Morning", "Noon", "Evening", "Night"]
 # # Test Data
 
 people = [
-     {"name": "Person1", "max_shifts": 2, "max_nights": 10, "unavailable": []},
-     {"name": "Person2", "max_shifts": 2, "max_nights": 10, "unavailable": []},
-     {"name": "Person3", "max_shifts": 2, "max_nights": 10, "unavailable": []},
+     {"name": "Person1", "max_shifts": 10, "max_nights": 10, "unavailable": []},
+     {"name": "Person2", "max_shifts": 10, "max_nights": 10, "unavailable": []},
+     {"name": "Person3", "max_shifts": 10, "max_nights": 10, "unavailable": []},
  ]
 
 shifts_per_day = {
