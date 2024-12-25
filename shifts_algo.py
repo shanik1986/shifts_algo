@@ -1,4 +1,4 @@
-# from import_constraints import structured_data
+from import_constraints import structured_data
 import sys
 
 # Define constants for days and shifts
@@ -8,34 +8,34 @@ days = [
 ]
 shifts = ["Morning", "Noon", "Evening", "Night"]
 # Define shifts per day
-# shifts_per_day = {
+shifts_per_day = {
     
-#    "Last Saturday": {"Night": 3},
-#    "Sunday": {"Morning": 3, "Noon": 2, "Evening": 1, "Night": 4},
-#     "Monday": {"Morning": 2, "Noon": 1, "Evening": 1, "Night": 3},
-#     "Tuesday": {"Morning": 3, "Noon": 1, "Evening": 2, "Night": 4},
-#     "Wednesday": {"Morning": 3, "Noon": 2, "Evening": 2, "Night": 4},
-#     "Thursday": {"Morning": 3, "Noon": 2, "Evening": 2, "Night": 4},
-#    "Friday": {"Morning": 2, "Noon": 2, "Evening": 0, "Night": 2},
-#     "Saturday": {"Morning": 2, "Noon": 2, "Evening": 2},
-# }
+   "Last Saturday": {"Night": 3},
+   "Sunday": {"Morning": 3, "Noon": 2, "Evening": 1, "Night": 4},
+    "Monday": {"Morning": 2, "Noon": 1, "Evening": 1, "Night": 3},
+    "Tuesday": {"Morning": 3, "Noon": 1, "Evening": 2, "Night": 4},
+    "Wednesday": {"Morning": 3, "Noon": 2, "Evening": 2, "Night": 4},
+    "Thursday": {"Morning": 3, "Noon": 2, "Evening": 2, "Night": 4},
+   "Friday": {"Morning": 2, "Noon": 2, "Evening": 0, "Night": 2},
+    "Saturday": {"Morning": 2, "Noon": 2, "Evening": 2},
+}
 
 # Placeholder for people data (we will add more dynamically later)
 
 
 
-# # Test Data
+# # # Test Data
 
-people = [
-     {"name": "Person1", "max_shifts": 10, "max_nights": 10, "unavailable": []},
-     {"name": "Person2", "max_shifts": 10, "max_nights": 10, "unavailable": []},
-     {"name": "Person3", "max_shifts": 10, "max_nights": 10, "unavailable": []},
- ]
+# people = [
+#      {"name": "Person1", "max_shifts": 10, "max_nights": 10, "unavailable": []},
+#      {"name": "Person2", "max_shifts": 10, "max_nights": 10, "unavailable": []},
+#      {"name": "Person3", "max_shifts": 10, "max_nights": 10, "unavailable": []},
+#  ]
 
-shifts_per_day = {
-     "Sunday": {"Morning": 1, "Evening": 2, "Night": 3},
-     "Monday": {"Morning": 3}
- }
+# shifts_per_day = {
+#      "Sunday": {"Morning": 1, "Evening": 1, "Night": 0},
+#      "Monday": {"Morning": 0}
+#  }
 
 
 debug_mode = True
@@ -235,11 +235,11 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
     # Get eligible people for this shift
     eligible_people = get_available_people(day, shift, people, shift_counts, night_counts, current_assignments)
 
-#     # Sort eligible people based on their flexibility
-#     eligible_people.sort(key=lambda p: len([
-#     (day, shift) for day, shifts in remaining_shifts.items()
-#     for shift, needed in shifts.items() if needed > 0 and (day, shift) not in p["unavailable"]
-# ]))
+    # Sort eligible people based on their flexibility
+    eligible_people.sort(key=lambda p: len([
+    (day, shift) for day, shifts in remaining_shifts.items()
+    for shift, needed in shifts.items() if needed > 0 and (day, shift) not in p["unavailable"]
+]))
 
     debug_log(f"Eligible people for {day} {shift}: {[p['name'] for p in eligible_people]}")
 
@@ -308,7 +308,7 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
 
 
 # Prepare initial variables
-# people = structured_data
+people = structured_data
 remaining_shifts = shifts_per_day.copy()
 
 # Prepare initial assignments and counts
