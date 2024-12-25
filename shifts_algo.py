@@ -7,7 +7,7 @@ days = [
     "Wednesday", "Thursday", "Friday", "Saturday"
 ]
 shifts = ["Morning", "Noon", "Evening", "Night"]
-
+print("Test")
 # Define shifts per day
 shifts_per_day = {
     
