@@ -83,13 +83,13 @@ def rank_shifts(remaining_shifts, shift_counts, people):
                 if available_people:
                     constraint_score = len(available_people) / needed
                 else:
-                    constraint_score = float("inf")  # Max constraint if no people
+                    constraint_score = 0  # Max constraint if no people
                 rankings.append((constraint_score, (day, shift, needed)))
                 debug_log(f"Shift: {day} {shift}, Needed: {needed}, "
                       f"Available people: {len(available_people)}, Score: {constraint_score}")
     
-    # sorted_rankings = sorted(rankings, key=lambda x: x[0])
-    sorted_rankings = rankings
+    sorted_rankings = sorted(rankings, key=lambda x: x[0])
+    # sorted_rankings = rankings
     debug_log("\n=== Ranked Shifts ===")
     for rank, (score, (day, shift, needed)) in enumerate(sorted_rankings, 1):
         debug_log(f"Rank {rank}: {day} {shift} with score {score}")
@@ -111,7 +111,7 @@ def rank_shifts(remaining_shifts, shift_counts, people):
 #     ]
 #     return eligible_people
 
-def get_available_people(day, shift, people, shift_counts, nights_count, current_assignments):
+def get_available_people(day, shift, people, shift_counts, night_counts, current_assignments):
     """
     Returns a list of eligible people for a specific day and shift.
     Eligibility is based on:
