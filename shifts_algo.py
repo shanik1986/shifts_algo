@@ -35,11 +35,12 @@ shifts_per_day = {
 
 # shifts_per_day = {
 #      "Sunday": {"Morning": 1, "Evening": 1, "Night": 0},
-#      "Monday": {"Morning": 0}
+#      "Monday": {"Morning": 1, "Night": 2},
+#      "Tuesday": {"Morning": 1}
 #  }
 
 
-debug_mode = False
+debug_mode = True
 def debug_log(message):
     if debug_mode:
         print(message)
@@ -138,7 +139,7 @@ def get_available_people(day, shift, people, shift_counts, night_counts, current
 
         # Check night shift limit
         
-        if night_counts[person["name"]] >= person["max_nights"]:
+        if shift == "Night" and night_counts[person["name"]] >= person["max_nights"]:
             continue
         
         
@@ -160,7 +161,7 @@ def get_available_people(day, shift, people, shift_counts, night_counts, current
 
         # Add eligible person
         eligible_people.append(person)
-    debug_log(f"Eligible people for {day} {shift}: {[p['name'] for p in eligible_people]}")
+        debug_log(f"Eligible people for {day} {shift}: {[p['name'] for p in eligible_people]}")
 
     return eligible_people
 

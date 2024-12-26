@@ -1,5 +1,5 @@
 Name,Double Shifts?,Max Shifts,Max Nights,Saturday Night,Sunday Morning,Sunday Noon,Sunday Evening,Sunday Night,Monday Morning,Monday Noon,Monday Evening,Monday night,Tuesday Morning,Tuesday Noon,Tuesday Evening,Tuesday Night,Wednesday Morning,Wednesday Noon,Wednesday Evening,Wednesday Night,Thursday Morning,Thursday Noon,Thursday Evening,Thursday Night,Friday Morning,Friday Noon,Friday Evening,Friday Night,Saturday Morning,Saturday Noon,Saturday Evening,Saturday Night
-Itamar,FALSE,1,0,FALSE,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-Yoram,FALSE,1,0,FALSE,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Itamar,FALSE,1,1,FALSE,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Yoram,FALSE,1,1,FALSE,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 Maor,TRUE,4,2,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 Avishay,TRUE,5,2,FALSE,,,,,,,,,,,,,,,,,,,,,,,,,,,,
