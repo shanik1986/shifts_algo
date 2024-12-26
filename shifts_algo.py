@@ -128,10 +128,17 @@ def get_available_people(day, shift, people, shift_counts, night_counts, current
     previous_day = days[day_index - 1] if day_index > 0 else False
     next_day = days[day_index + 1] if day_index < len(days) - 1 else False
 
+    shift_index = shifts.index(shift)
+    previous_shit = shifts[shift_index - 1] if shift_index > 0 else 3
+    next_shift = shifts[shift_index + 1] if shift_index < 3 else 0
+
     for person in people:
         # Check availability
         if (day, shift) in person["unavailable"]:
             continue
+        
+        #Check consecutive shift limit
+        
         
         # Check max shift limit
         if shift_counts[person["name"]] >= person["max_shifts"]:
