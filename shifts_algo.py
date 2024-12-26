@@ -12,7 +12,7 @@ shifts = ["Morning", "Noon", "Evening", "Night"]
 shifts_per_day = {
     
    "Last Saturday": {"Night": 4},
-   "Sunday": {"Morning": 3, "Noon": 2, "Evening": 2, "Night": 4},
+   "Sunday": {"Morning": 2, "Noon": 2, "Evening": 2, "Night": 4},
     "Monday": {"Morning": 3, "Noon": 2, "Evening": 2, "Night": 4},
     "Tuesday": {"Morning": 3, "Noon": 2, "Evening": 2, "Night": 4},
     "Wednesday": {"Morning": 2, "Noon": 2, "Evening": 2, "Night": 4},
@@ -129,7 +129,7 @@ def get_available_people(day, shift, people, shift_counts, night_counts, current
     next_day = days[day_index + 1] if day_index < len(days) - 1 else False
 
     shift_index = shifts.index(shift)
-    previous_shit = shifts[shift_index - 1] if shift_index > 0 else 3
+    previous_shift = shifts[shift_index - 1] if shift_index > 0 else 3
     next_shift = shifts[shift_index + 1] if shift_index < 3 else 0
 
     for person in people:
@@ -137,16 +137,21 @@ def get_available_people(day, shift, people, shift_counts, night_counts, current
         if (day, shift) in person["unavailable"]:
             continue
         
-        #Check consecutive shift limit
         
         
         # Check max shift limit
         if shift_counts[person["name"]] >= person["max_shifts"]:
             continue
 
-        # Check night shift limit
-        
+        # Check night limit
         if shift == "Night" and night_counts[person["name"]] >= person["max_nights"]:
+            continue
+        
+        # Validate consecutive shifts
+        if shift == "Evening" and (person in current_assignments[day][next_shift]):
+            continue
+        elif shift in ["Morning", "Noon"] and not(person["double_shift"]):
+            debug_log("Double shift violation: " + str(person))
             continue
         
         
