@@ -5,12 +5,13 @@ days = ["Last Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday",
 shifts = ["Morning", "Noon", "Evening", "Night"]
 
 # Load the CSV file
-file_path = "shifts.csv"  # Replace with your actual file name
+file_path = "shifts_updated.csv"  # Replace with your actual file name
 # file_path = "test_data.csv"  # Replace with your actual file name
 df = pd.read_csv(file_path)
 
-# Fix the "Double Shifts?" column to ensure proper booleans
+# Fix the "Double Shifts?" and "3 Shift Days?" columns to ensure proper booleans
 df["Double Shifts?"] = df["Double Shifts?"].astype(str).str.strip().str.upper() == "TRUE"
+df["3 Shift Days?"] = df["3 Shift Days?"].astype(str).str.strip().str.upper() == "TRUE"
 
 # Parse the dataset into a structured format
 def parse_shift_data(df):
@@ -37,6 +38,7 @@ def parse_shift_data(df):
             "double_shift": row["Double Shifts?"],
             "max_shifts": int(row["Max Shifts"]),
             "max_nights": int(row["Max Nights"]),
+             "are_three_shifts_possible": row["3 Shift Days?"],
             "unavailable": unavailable
         }
         processed_data.append(person)
