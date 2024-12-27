@@ -18,7 +18,7 @@ def parse_shift_data(df):
     processed_data = []
     for _, row in df.iterrows():
         unavailable = []
-        column_index = 4  # Start with "Last Saturday Night"
+        column_index = 5  # Start with "Last Saturday Night"
 
         # Loop through days and shifts
         for day in days:
