@@ -12,7 +12,7 @@ shifts = ["Morning", "Noon", "Evening", "Night"]
 shifts_per_day = {
     
    "Last Saturday": {"Night": 4},
-   "Sunday": {"Morning": 2, "Noon": 2, "Evening": 2, "Night": 4},
+   "Sunday": {"Morning": 3, "Noon": 2, "Evening": 2, "Night": 4},
     "Monday": {"Morning": 3, "Noon": 2, "Evening": 2, "Night": 4},
     "Tuesday": {"Morning": 3, "Noon": 2, "Evening": 2, "Night": 4},
     "Wednesday": {"Morning": 2, "Noon": 2, "Evening": 2, "Night": 4},
@@ -98,21 +98,6 @@ def rank_shifts(remaining_shifts, shift_counts, people):
     print("=====================\n")
     return sorted_rankings
 
-# def get_available_people(day, shift, people, shift_counts):
-#     """
-#     Returns a list of eligible people for a specific day and shift.
-#     Eligibility is based on:
-#       1) Availability (not unavailable for this shift)
-#       2) Max shift limit not exceeded
-#       3) Additional conditions (e.g., double shifts, night+morning, etc.)
-#     """
-#     eligible_people = [
-#         p for p in people
-#         if (day, shift) not in p["unavailable"]  # Check availability
-#         and shift_counts[p["name"]] < p["max_shifts"]  # Check shift limits
-#     ]
-#     return eligible_people
-
 def get_available_people(day, shift, people, shift_counts, night_counts, current_assignments):
     """
     Returns a list of eligible people for a specific day and shift.
@@ -129,8 +114,8 @@ def get_available_people(day, shift, people, shift_counts, night_counts, current
     next_day = days[day_index + 1] if day_index < len(days) - 1 else False
 
     shift_index = shifts.index(shift)
-    previous_shift = shifts[shift_index - 1] if shift_index > 0 else 3
-    next_shift = shifts[shift_index + 1] if shift_index < 3 else 0
+    previous_shift = shifts[shift_index - 1] if shift_index > 0 else shifts[3]
+    next_shift = shifts[shift_index + 1] if shift_index < 3 else shifts[0]
 
     for person in people:
         # Check availability
@@ -138,21 +123,35 @@ def get_available_people(day, shift, people, shift_counts, night_counts, current
             continue
         
         
-        
         # Check max shift limit
         if shift_counts[person["name"]] >= person["max_shifts"]:
+            debug_log(f"\n{person['name']} not eligible: Already reached max shifts")
             continue
 
-        # Check night limit
-        if shift == "Night" and night_counts[person["name"]] >= person["max_nights"]:
-            continue
         
-        # Validate consecutive shifts
+        # Check consecutive shift limitations if person does not approve double shifts:
+        if not(person["double_shift"]): # Person does not approve double shifts
+            if (shift in ["Morning", "Noon"] and person in current_assignments[day][next_shift]) or (shift == ["Noon", "Evening"] and person in current_assignments[day][previous_shift]):
+                continue
+        
+        
+        # Night shift limitations:
+        if shift == "Night":
+            # Validating max night limitation for that person
+            if night_counts[person['name']] >= person["max_nights"]:
+                debug_log(f"\n{person['name']} not eligible: Max night limitation breached")
+                continue
+            
+            # Validating Evening + night restriction for that person
+            elif (person in current_assignments[day][previous_shift]):
+                debug_log(f"\n{person['name']} not eligible: evening + Night limitation breached. Already assigned to {day}{previous_shift}")
+        
+        # Evening limitations: Evening + night
         if shift == "Evening" and (person in current_assignments[day][next_shift]):
+            debug_log(f"\n{person['name']} not eligible: evening + Night limitation breached. Already assigned to {day}{next_shift}")
             continue
-        elif shift in ["Morning", "Noon"] and not(person["double_shift"]):
-            debug_log("Double shift violation: " + str(person))
-            continue
+
+
         
         
         # Validate night-to-morning constraint for morning shifts
@@ -170,6 +169,7 @@ def get_available_people(day, shift, people, shift_counts, night_counts, current
             if person in next_morning_assignments:
                 debug_log(f"{person['name']} excluded from {day} {shift} because of a morning shift on {next_day}")
                 continue
+        
 
         # Add eligible person
         eligible_people.append(person)
