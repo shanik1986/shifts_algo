@@ -107,14 +107,15 @@ def get_available_people(day, shift, people, shift_counts, night_counts, current
       3) Not working a night shift before a morning shift
     """
 
-
+    debug_log(f"\nFinding eligible people for {day}{shift}")
+    debug_log("============================================")
     eligible_people = []
     day_index = days.index(day)
     previous_day = days[day_index - 1] if day_index > 0 else False
     next_day = days[day_index + 1] if day_index < len(days) - 1 else False
 
     shift_index = shifts.index(shift)
-    previous_shift = shifts[shift_index - 1] if shift_index > 0 else shifts[3]
+    previous_shift = shifts[shift_index - 1] if shift_index > 0 else shifts[len(shifts) - 1]
     next_shift = shifts[shift_index + 1] if shift_index < 3 else shifts[0]
 
     for person in people:
@@ -131,9 +132,20 @@ def get_available_people(day, shift, people, shift_counts, night_counts, current
         
         # Check consecutive shift limitations if person does not approve double shifts:
         if not(person["double_shift"]): # Person does not approve double shifts
-            if (shift in ["Morning", "Noon"] and person in current_assignments[day][next_shift]) or (shift == ["Noon", "Evening"] and person in current_assignments[day][previous_shift]):
+            if (shift in ["Morning", "Noon"] and person in current_assignments[day][next_shift]):
+                debug_log(f"\n{person['name']} not eligible: Does not approve double shifts and already assigned for {current_assignments[day][next_shift]}")
+                continue
+            if (shift == ["Noon", "Evening"] and person in current_assignments[day][previous_shift]):
+                debug_log(f"\n{person['name']} not eligible: Does not approve double shifts and already assigned for {current_assignments[day][previous_shift]}")
                 continue
         
+        # Check noon after night constraint
+        if previous_day and shift == "Noon" and person in current_assignments[previous_day]["Night"]:
+            debug_log(f"\n{person['name']} not eligible for {day} Noon: Already scheduled for {previous_day} night")
+            continue
+        if next_day and shift=="Night" and person in current_assignments[next_day]["Noon"]:
+            debug_log(f"\n{person['name']} not eligible for {day} Night: Already scheduled for {next_day} Noon")
+            continue
         
         # Night shift limitations:
         if shift == "Night":
@@ -173,8 +185,8 @@ def get_available_people(day, shift, people, shift_counts, night_counts, current
 
         # Add eligible person
         eligible_people.append(person)
-        debug_log(f"Eligible people for {day} {shift}: {[p['name'] for p in eligible_people]}")
-
+    
+    debug_log(f"\nEligible people for {day} {shift}: {[p['name'] for p in eligible_people]}")
     return eligible_people
 
 def validate_night_to_morning_constraint(current_assignments, day, shift, assigned_people):
@@ -281,7 +293,7 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
 
     # Get eligible people for this shift
     eligible_people = get_available_people(day, shift, people, shift_counts, night_counts, current_assignments)
-    debug_log(f"Eligible people for {day} {shift}: {[p['name'] for p in eligible_people]}")
+    # debug_log(f"Eligible people for {day} {shift}: {[p['name'] for p in eligible_people]}")
 
     # If not enough people are available, backtrack
     if len(eligible_people) < needed:
