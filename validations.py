@@ -25,6 +25,15 @@ def is_max_shifts_reached(person, shift_counts):
 def is_shift_assigned(person, day, tested_shift, current_assignments):
     return person['name'] in current_assignments[day][tested_shift]
 
+def is_third_shift(person, day, current_assignments):
+    # debug_log(f"Checking if this is the third shift for {person}")
+    counter = 0
+    for assigned_people in current_assignments[day].values():
+        if person['name'] in assigned_people:
+            counter+=1
+    return counter >=2
+
+
 
 
 # def print_unavailable_reason(message):
@@ -64,7 +73,10 @@ def get_eligible_people(day, shift, people, shift_counts, night_counts, current_
             debug_log(f"{person['name']} not eligible: Already reached his maximum shifts ({person['max_shifts']})", debug_mode)
             continue
 
-        # Check if this is the third shift today and whether it's allowed for this person
+        # Check if this is the third shift today
+        if is_third_shift(person, day, current_assignments):
+            continue
+
 
 
         if shift == "Morning":

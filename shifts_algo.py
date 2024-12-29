@@ -12,14 +12,14 @@ SHIFTS = ["Morning", "Noon", "Evening", "Night"]
 # Define shifts per day
 shifts_per_day = {
     
-   "Last Saturday": {"Night": 4},
-   "Sunday": {"Morning": 2, "Noon": 2, "Evening": 2, "Night": 4},
-    "Monday": {"Morning": 3, "Noon": 2, "Evening": 2, "Night": 4},
-    "Tuesday": {"Morning": 3, "Noon": 2, "Evening": 2, "Night": 4},
-    "Wednesday": {"Morning": 2, "Noon": 2, "Evening": 2, "Night": 4},
-    "Thursday": {"Morning": 2, "Noon": 2, "Evening": 2, "Night": 4},
-   "Friday": {"Morning": 2, "Noon": 2, "Evening": 2, "Night": 4},
-    "Saturday": {"Morning": 2, "Noon": 2, "Evening": 2},
+   "Last Saturday": {"Night": 1},
+   "Sunday": {"Morning": 1, "Noon": 3, "Evening": 3, "Night": 1},
+    "Monday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 0},
+    "Tuesday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 1},
+    "Wednesday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 2},
+    "Thursday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
+   "Friday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
+    "Saturday": {"Morning": 3, "Noon": 3, "Evening": 3},
 }
 
 # Placeholder for people data (we will add more dynamically later)
