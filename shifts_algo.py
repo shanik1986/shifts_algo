@@ -276,6 +276,8 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
 
 # Prepare initial variables
 people = structured_data
+print(people)
+sys.exit("Stopping for debugging.")
 remaining_shifts = []
 for day, shifts in shifts_per_day.items():
     for shift, needed in shifts.items():
@@ -295,7 +297,7 @@ night_counts = {p["name"]: 0 for p in people}
 
 # Sort shifts based on constraint level
 remaining_shifts = rank_shifts(remaining_shifts, shift_counts, people)
-# sys.exit("Stopping for debugging.")
+
 
 
 
