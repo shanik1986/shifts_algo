@@ -276,8 +276,8 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
 
 # Prepare initial variables
 people = structured_data
-print(people)
-sys.exit("Stopping for debugging.")
+# print(people)
+# sys.exit("Stopping for debugging.")
 remaining_shifts = []
 for day, shifts in shifts_per_day.items():
     for shift, needed in shifts.items():

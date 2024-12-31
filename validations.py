@@ -74,8 +74,13 @@ def get_eligible_people(day, shift, people, shift_counts, night_counts, current_
             continue
 
         # Check if this is the third shift today
-        if is_third_shift(person, day, current_assignments):
-            continue
+        if (is_third_shift)(person, day, current_assignments):
+                if(not(person["are_three_shifts_possible"])): 
+                    debug_log(f"{person['name']} not eligible: Third shift a day restriction {previous_day} night",debug_mode)
+                    continue
+                elif is_shift_assigned(person, day, "Evening", current_assignments):
+                    continue
+
 
 
 
