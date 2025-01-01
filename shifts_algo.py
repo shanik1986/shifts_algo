@@ -12,11 +12,11 @@ SHIFTS = ["Morning", "Noon", "Evening", "Night"]
 # Define shifts per day
 shifts_per_day = {
     
-   "Last Saturday": {"Night": 1},
-   "Sunday": {"Morning": 1, "Noon": 3, "Evening": 3, "Night": 1},
-    "Monday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 0},
-    "Tuesday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 1},
-    "Wednesday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 2},
+   "Last Saturday": {"Night": 3},
+   "Sunday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
+    "Monday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
+    "Tuesday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
+    "Wednesday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
     "Thursday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
    "Friday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
     "Saturday": {"Morning": 3, "Noon": 3, "Evening": 3},
@@ -29,14 +29,14 @@ shifts_per_day = {
 # # # Test Data
 
 # people = [
-#      {"name": "Person1", "max_shifts": 10, "max_nights": 2, "unavailable": [], "double_shift": True},
-#      {"name": "Person2", "max_shifts": 10, "max_nights": 2, "unavailable": [], "double_shift": True},
-#      {"name": "Person3", "max_shifts": 10, "max_nights": 2, "unavailable": [], "double_shift": True},
+#      {"name": "Person1", "max_shifts": 4, "max_nights": 2, "unavailable": [], "double_shift": True, "are_three_shifts_possible": True},
+#      {"name": "Person2", "max_shifts": 4, "max_nights": 2, "unavailable": [], "double_shift": True, "are_three_shifts_possible": True},
+#      {"name": "Person3", "max_shifts": 6, "max_nights": 2, "unavailable": [], "double_shift": True, "are_three_shifts_possible": True},
 #  ]
 
 # shifts_per_day = {
 #      "Sunday": {"Morning": 1, "Evening": 1, "Night": 1},
-#      "Monday": {"Morning": 0, "Noon": 1, "Evening": 2, "Night": 1},
+#      "Monday": {"Morning": 0, "Noon": 1, "Evening": 3, "Night": 1},
 #      "Tuesday": {"Morning": 1, "Evening": 1, "Night": 2},
 #      "Wednesday": {"Morning": 1, "Noon": 2},
 #  }
@@ -176,17 +176,17 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
     debug_log(f"  Night counts: {night_counts}")
     debug_log(f"  Current assignments: {current_assignments}")
 
+
     # Get eligible people for this shift
     eligible_people = get_eligible_people(day, shift, people, shift_counts, night_counts, current_assignments)
-    debug_log(f"Eligible people for {day} {shift}: {[p['name'] for p in eligible_people]}")
+    # debug_log(f"Eligible people for {day} {shift}: {[p['name'] for p in eligible_people]}")
 
     # If not enough people are available, backtrack
     if len(eligible_people) < needed:
         debug_log(f"Not enough eligible people for {day} {shift}. Backtracking...")
         return False
 
-    if not(validate_remaining_shifts(remaining_shifts, people, shift_counts)):
-        return False
+
 
     # Compute constraint scores for each eligible person
     person_scores = {p["name"]: calculate_person_constraint(p, remaining_shifts) for p in eligible_people}
@@ -200,7 +200,19 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
     # Sort combinations by their total constraint score (lowest score first)
     combo_scores.sort(key=lambda x: x[0])
 
+    # The target names to look for
+    target_names = {"Avishay", "Shani Keynan"}
+
+    # Function to check if any of the dicts in an item contain a target name
+    def contains_target_name(item, target_names):
+        _, dicts = item
+        return any(d["name"] in target_names for d in dicts)
+
+    # Reorder the list: items with target names go first
+    combo_scores = sorted(combo_scores, key=lambda x: not contains_target_name(x, target_names))
+
     # Try all combinations of eligible people for this shift
+
     for combo_score, combo in combo_scores:
         debug_log(f"Trying combination: {[p['name'] for p in combo]} for {day} {shift}")
         # # Validate night-to-morning constraint for morning and night shifts
@@ -208,6 +220,7 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
         #     if not validate_night_to_morning_constraint(current_assignments, day, shift, combo):
         #         debug_log(f"Night-to-morning constraint violated for {day} {shift}. Undoing assignment...")
         #         continue  # Skip to the next combination
+
 
 
 
@@ -228,11 +241,34 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
         
 
         # Log the current state after assignment
-        debug_log(f"State after assigning {day} {shift}:")
-        debug_log(f"  Shift counts: {shift_counts}")
-        debug_log(f"  Night counts: {night_counts}")
-        debug_log(f"  Current assignments: {current_assignments}")
+        debug_log(f"\nState after assigning {day} {shift}:")
+        debug_log(f"======================================\n")
+        debug_log(f"  Shift counts: {shift_counts}\n")
+        debug_log(f"  Night counts: {night_counts}\n")
+        debug_log(f"  Current assignments: {current_assignments}\n")
         # remaining_shifts = rank_shifts(remaining_shifts, shift_counts, people)
+
+        #Checking that all the shifts have available people after the lastest assignment
+        debug_log(f"\nValidating all shifts after assigning {current_assignments[day][shift]} for {day} {shift}:")
+        debug_log(f"======================================================================")
+        if not(validate_remaining_shifts(remaining_shifts, people, shift_counts)):
+            # Undo the assignment (backtrack)
+            for person in combo:
+                shift_counts[person["name"]] -= 1
+                if shift=="Night":
+                    night_counts[person["name"]] -= 1
+            current_assignments[day][shift] = []
+            debug_log(f"Backtracking: Undoing assignment for {day} {shift}: {[p['name'] for p in combo]}")
+            debug_log(f"Restoring {day} {shift} back on remaining shifts")
+            
+            remaining_shifts = copy.deepcopy(rank_shifts(original_shifts, shift_counts, people))
+            day, shift, needed = remaining_shifts[0]
+            debug_log(f"State after undoing {day} {shift}:")
+            debug_log(f"  Remaining shifts: {remaining_shifts}")
+            debug_log(f"  Shift counts: {shift_counts}")
+            debug_log(f"  Night counts: {night_counts}")
+            debug_log(f"  Current assignments: {current_assignments}")
+            continue
         
         
         # if not(validate_remaining_shifts(remaining_shifts, people, shift_counts)):
