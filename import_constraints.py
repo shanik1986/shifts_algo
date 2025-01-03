@@ -1,8 +1,8 @@
 import pandas as pd
 
 # Define days and shifts
-days = ["Last Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-shifts = ["Morning", "Noon", "Evening", "Night"]
+DAYS = ["Last Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+SHIFTS = ["Morning", "Noon", "Evening", "Night"]
 
 # Load the CSV file
 file_path = "Shifts - Real Data - 01.01.csv"  # Replace with your actual file name
@@ -21,8 +21,8 @@ def parse_shift_data(df):
         column_index = 8  # Start with "Last Saturday Night"
 
         # Loop through days and shifts
-        for day in days:
-            for shift in shifts:
+        for day in DAYS:
+            for shift in SHIFTS:
                 # Skip non-existing shifts for Last Saturday (only Night exists)
                 if day == "Last Saturday" and shift != "Night":
                     continue

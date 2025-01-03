@@ -1,14 +1,14 @@
-from import_constraints import structured_data
+from import_constraints import structured_data, SHIFTS, DAYS
 from itertools import combinations
 from validations import get_eligible_people
 import sys
 
-# Define constants for days and shifts
-DAYS = [
-    "Last Saturday", "Sunday", "Monday", "Tuesday", 
-    "Wednesday", "Thursday", "Friday", "Saturday"
-]
-SHIFTS = ["Morning", "Noon", "Evening", "Night"]
+# # Define constants for days and shifts
+# DAYS = [
+#     "Last Saturday", "Sunday", "Monday", "Tuesday", 
+#     "Wednesday", "Thursday", "Friday", "Saturday"
+# ]
+# SHIFTS = ["Morning", "Noon", "Evening", "Night"]
 # Define shifts per day
 shifts_per_day = {
     
