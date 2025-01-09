@@ -1,4 +1,4 @@
-from import_constraints import structured_data, SHIFTS, DAYS
+from testing_sheets_import import structured_data, SHIFTS, DAYS
 from itertools import combinations
 from validations import get_eligible_people
 import sys
@@ -14,7 +14,7 @@ shifts_per_day = {
     
    "Last Saturday": {"Night": 3},
    "Sunday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
-    "Monday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
+    "Monday": {"Morning": 0, "Noon": 0, "Evening": 0, "Night": 3},
     "Tuesday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
     "Wednesday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
     "Thursday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
@@ -200,7 +200,7 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
     # Sort combinations by their total constraint score (lowest score first)
     combo_scores.sort(key=lambda x: x[0])
 
-    # The target names to look for
+    # # The target names to look for
     target_names = {"Avishay", "Shani Keynan"}
 
     # Function to check if any of the dicts in an item contain a target name
