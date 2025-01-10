@@ -1,17 +1,26 @@
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 import pandas as pd
 
-# Define days and shifts
-DAYS = ["Last Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-SHIFTS = ["Morning", "Noon", "Evening", "Night"]
+# Google Sheets API setup
+def get_google_sheet_data(sheet_name, tab_name):
+    # Define the scope and authenticate
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    
+    # Load credentials from the JSON key file
+    credentials = ServiceAccountCredentials.from_json_keyfile_name('google sheets access key.json', scope)
+    
+    # Authorize the client
+    client = gspread.authorize(credentials)
 
-# Load the CSV file
-file_path = "Shifts - Real Data - 9.1.csv"  # Replace with your actual file name
-# file_path = "test_data.csv"  # Replace with your actual file name
-df = pd.read_csv(file_path)
+# Open the sheet by name and access a specific tab
+    sheet = client.open(sheet_name)
+    worksheet = sheet.worksheet(tab_name)
 
-# Fix the "Double Shifts?" and "3 Shift Days?" columns to ensure proper booleans
-df["Double Shifts?"] = df["Double Shifts?"].astype(str).str.strip().str.upper() == "TRUE"
-df["3 Shift Days?"] = df["3 Shift Days?"].astype(str).str.strip().str.upper() == "TRUE"
+    # Get all data from the worksheet
+    data = worksheet.get_all_records()
+    return pd.DataFrame(data)
+
 
 # Parse the dataset into a structured format
 def parse_shift_data(df):
@@ -45,13 +54,23 @@ def parse_shift_data(df):
     
     return processed_data
 
+# Define sheet parameters
+sheet_name = "Shifts"
+tab_name = "Real Data - 09/01"
+df = get_google_sheet_data(sheet_name, tab_name)
+
+# Define days and shifts
+DAYS = ["Last Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+SHIFTS = ["Morning", "Noon", "Evening", "Night"]
+
+# Fix the "Double Shifts?" and "3 Shift Days?" columns to ensure proper booleans
+df["Double Shifts?"] = df["Double Shifts?"].astype(str).str.strip().str.upper() == "TRUE"
+df["3 Shift Days?"] = df["3 Shift Days?"].astype(str).str.strip().str.upper() == "TRUE"
+
+
 # Process the dataset
 structured_data = parse_shift_data(df)
 
-# # Output the structured data for validation
-# for person in structured_data:
-#     print(f"Name: {person['name']}, Double Shift: {person['double_shift']}, "
-#           f"Max Shifts: {person['max_shifts']}, Max Nights: {person['max_nightss']}, "
-#           f"Unavailable: {person['unavailable']}")
+
 
 # print(structured_data)

@@ -31,7 +31,7 @@ def is_third_shift(person, day, current_assignments):
     for assigned_people in current_assignments[day].values():
         if person['name'] in assigned_people:
             counter+=1
-    return counter >=2
+    return counter >=3
 
 
 
