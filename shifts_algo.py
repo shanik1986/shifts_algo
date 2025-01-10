@@ -1,20 +1,21 @@
-from import_constraints import structured_data, SHIFTS, DAYS
+from import_sheet_data import shift_constraints, SHIFTS, DAYS
 from itertools import combinations
 from validations import get_eligible_people
+from import_sheet_data import shift_requirements as shifts_per_day
 import sys
 
 # # Define constants for days and shifts
-shifts_per_day = {
+# shifts_per_day = {
     
-   "Last Saturday": {"Night": 3},
-   "Sunday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
-    "Monday": {"Morning": 0, "Noon": 0, "Evening": 0, "Night": 3},
-    "Tuesday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
-    "Wednesday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
-    "Thursday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
-   "Friday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
-    "Saturday": {"Morning": 3, "Noon": 3, "Evening": 3},
-}
+#    "Last Saturday": {"Night": 3},
+#    "Sunday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
+#     "Monday": {"Morning": 0, "Noon": 0, "Evening": 0, "Night": 3},
+#     "Tuesday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
+#     "Wednesday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
+#     "Thursday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
+#    "Friday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
+#     "Saturday": {"Morning": 3, "Noon": 3, "Evening": 3},
+# }
 
 # Placeholder for people data (we will add more dynamically later)
 
@@ -265,7 +266,7 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
 
 
 # Prepare initial variables
-people = structured_data
+people = shift_constraints
 # print(people)
 # sys.exit("Stopping for debugging.")
 remaining_shifts = []
