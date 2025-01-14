@@ -1,4 +1,4 @@
-from import_sheet_data import shift_requirements
+from app.google_sheets.import_sheet_data import shift_requirements
 
 def compare_shifts_data(parsed_data, reference_data):
     """

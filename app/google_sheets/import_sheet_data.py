@@ -1,5 +1,5 @@
 import pandas as pd
-from init_sheet_access import get_google_sheet_data
+from app.google_sheets.init_sheet_access import get_google_sheet_data
 import sys
 
 # Define days and shifts
