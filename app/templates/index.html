@@ -38,6 +38,13 @@
                 document.getElementById('loader').style.display = 'none';
             }, 5000);
             
+            // Define the order of days and shifts
+            const dayOrder = [
+                "Last Saturday", "Sunday", "Monday", "Tuesday", 
+                "Wednesday", "Thursday", "Friday", "Saturday"
+            ];
+            const shiftOrder = ["Morning", "Noon", "Evening", "Night"];
+
             fetch('/generate_schedule', {
                 method: 'POST'
             })
@@ -52,21 +59,28 @@
                     if (data.success) {
                         let output = '=== Shifts Successfully Assigned ===\n\n';
                         
-                        // Display assignments by day and shift
-                        Object.entries(data.assignments).forEach(([day, shifts]) => {
-                            output += `${day}:\n`;
-                            Object.entries(shifts).forEach(([shift, assigned]) => {
-                                if (assigned.length > 0) {
-                                    output += `  ${shift}: ${assigned.join(', ')}\n`;
-                                }
-                            });
+                        // Display assignments by day and shift in correct order
+                        dayOrder.forEach(day => {
+                            if (data.assignments[day]) {
+                                output += `${day}:\n`;
+                                shiftOrder.forEach(shift => {
+                                    const assigned = data.assignments[day][shift];
+                                    if (assigned && assigned.length > 0) {
+                                        output += `  ${shift}: ${assigned.join(', ')}\n`;
+                                    } else {
+                                        output += `  ${shift}: Unassigned\n`;
+                                    }
+                                });
+                            }
                         });
                         
-                        // Display shifts per person
+                        // Sort shifts per person alphabetically
                         output += '\n=== Shifts Assigned Per Person ===\n';
-                        Object.entries(data.shifts_per_person).forEach(([name, count]) => {
-                            output += `${name}: ${count} shifts\n`;
-                        });
+                        Object.entries(data.shifts_per_person)
+                            .sort(([a], [b]) => a.localeCompare(b))
+                            .forEach(([name, count]) => {
+                                output += `${name}: ${count} shifts\n`;
+                            });
                         
                         document.getElementById('result').textContent = output;
                     }
