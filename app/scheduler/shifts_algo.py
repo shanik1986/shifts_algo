@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from app.google_sheets.import_sheet_data import shift_constraints, SHIFTS, DAYS
 from app.google_sheets.import_sheet_data import shift_requirements as shifts_per_day
 from itertools import combinations
