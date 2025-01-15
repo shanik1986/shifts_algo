@@ -7,6 +7,7 @@ from itertools import combinations
 from app.scheduler.validations import get_eligible_people, is_person_eligible_for_shift, is_shift_assigned, get_adjacent_shifts
 import sys
 from app.scheduler.constants import DAYS, SHIFTS  # Instead of from import_sheet_data
+from flask import jsonify
 
 # # Define constants for days and shifts
 # shifts_per_day = {
@@ -47,7 +48,7 @@ def debug_log(message):
         print(message)
 
 
-def rank_shifts(remaining_shifts, shift_counts, people):
+def rank_shifts(remaining_shifts, shift_counts, people, night_counts, current_assignments):
     """
     Rank shifts by their constraint level: available people / remaining needed.
     Log the ranking process for debugging.
@@ -77,7 +78,7 @@ def rank_shifts(remaining_shifts, shift_counts, people):
     return sorted_rankings
 
 
-def validate_remaining_shifts(remaining_shifts, people, shift_counts):
+def validate_remaining_shifts(remaining_shifts, people, shift_counts, night_counts, current_assignments):
     """
     Validate that all remaining shifts have enough eligible people to fill them.
     """
@@ -95,7 +96,7 @@ def get_previous_day(days, day):
     return days[index - 1] if index > 0 else None
 
 
-def calculate_person_constraint(person, remaining_shifts):
+def calculate_person_constraint(person, remaining_shifts, shift_counts, night_counts, current_assignments):
     """
     Calculate the constraint score for a person based on the number of shifts
     they are actually eligible for compared to their remaining shift capacity.
@@ -162,7 +163,15 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
     debug_log(f"Generated {len(all_combos)} combinations")
 
     # Compute constraint scores for each eligible person
-    person_scores = {p["name"]: calculate_person_constraint(p, remaining_shifts) for p in eligible_people}
+    person_scores = {
+        p["name"]: calculate_person_constraint(
+            p, 
+            remaining_shifts, 
+            shift_counts, 
+            night_counts, 
+            current_assignments
+        ) for p in eligible_people
+    }
 
     # Generate all combinations and calculate their scores
     combo_scores = []
@@ -240,8 +249,8 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
         debug_log(f"\nValidating all shifts after assigning {current_assignments[day][shift]} for {day} {shift}:")
         debug_log(f"======================================================================")
         
-        ranked_shifts = copy.deepcopy(rank_shifts(remaining_shifts, shift_counts, people))
-        if validate_remaining_shifts(ranked_shifts, people, shift_counts):
+        ranked_shifts = copy.deepcopy(rank_shifts(remaining_shifts, shift_counts, people, night_counts, current_assignments))
+        if validate_remaining_shifts(ranked_shifts, people, shift_counts, night_counts, current_assignments):
             result, reason = backtrack_assign(ranked_shifts, people, shift_counts, night_counts, 
                                            current_assignments, max_depth=max_depth, depth=depth + 1)
             
@@ -289,73 +298,74 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
     return False, "no_valid_combination"
 
 
-# Prepare initial variables
-people = shift_constraints
-# print(people)
-# sys.exit("Stopping for debugging.")
-remaining_shifts = []
-for day, shifts in shifts_per_day.items():
-    for shift, needed in shifts.items():
-        if needed > 0:
-            remaining_shifts.append((day, shift, needed))
+def get_hello_world():
+    return "Hello World from shifts_algo.py!"
 
-# Calculate maximum possible depth
-total_shifts = sum(needed for _, _, needed in remaining_shifts)
-print(f"Total shifts that need to be assigned: {total_shifts}")
+def run_shift_algorithm():
+    #Prepares the data for the algorithm
+    people = shift_constraints
+    remaining_shifts = []
+    for day, shifts in shifts_per_day.items():
+        for shift, needed in shifts.items():
+            if needed > 0:
+                remaining_shifts.append((day, shift, needed))
 
-# Calculate max combinations for any shift
-max_combinations = 0
-for day, shift, needed in remaining_shifts:
-    num_combinations = len(list(combinations(people, needed)))
-    if num_combinations > max_combinations:
-        max_combinations = num_combinations
-        max_shift = (day, shift, needed)
+    # Calculate maximum possible depth
+    total_shifts = sum(needed for _, _, needed in remaining_shifts)
+    print(f"Total shifts that need to be assigned: {total_shifts}")
 
-print(f"Maximum combinations ({max_combinations}) occurs for shift: {max_shift}")
+    # Calculate max combinations for any shift
+    max_combinations = 0
+    for day, shift, needed in remaining_shifts:
+        num_combinations = len(list(combinations(people, needed)))
+        if num_combinations > max_combinations:
+            max_combinations = num_combinations
+            max_shift = (day, shift, needed)
 
-# Calculate theoretical maximum depth
-theoretical_max_depth = total_shifts * max_combinations
-print(f"Theoretical maximum depth: {theoretical_max_depth}")
-# sys.exit("Stopping for debugging.")
+    print(f"Maximum combinations ({max_combinations}) occurs for shift: {max_shift}")
 
-# Prepare initial assignments and counts
-current_assignments = {day: {shift: [] for shift in SHIFTS} for day in DAYS}
-shift_counts = {p["name"]: 0 for p in people}
-night_counts = {p["name"]: 0 for p in people}
-# print (night_counts)
+    # Calculate theoretical maximum depth
+    theoretical_max_depth = total_shifts * max_combinations
+    print(f"Theoretical maximum depth: {theoretical_max_depth}")
 
-
-# Sort shifts based on constraint level
-remaining_shifts = rank_shifts(remaining_shifts, shift_counts, people)
-
-
-
-
-
-# Run the backtracking assignment
-max_depth = 10000  # You can adjust this
-success, reason = backtrack_assign(remaining_shifts, people, shift_counts, night_counts, 
-                                 current_assignments, max_depth=max_depth)
-
-if success:
-    print("\n=== Shifts Successfully Assigned ===")
-    for day, shifts in current_assignments.items():
-        print(f"{day}:")
-        for shift, assigned in shifts.items():
-            if assigned:
-                # assigned_names = [p["name"] for p in assigned]
-                print(f"  {shift}: {', '.join(assigned)}")
-            else:
-                print(f"  {shift}: Unassigned")
+    # Prepare initial assignments and counts
+    current_assignments = {day: {shift: [] for shift in SHIFTS} for day in DAYS}
+    shift_counts = {p["name"]: 0 for p in people}
+    night_counts = {p["name"]: 0 for p in people}
     
-    print("Validation complete.")
+    # Sort shifts based on constraint level
+    remaining_shifts = rank_shifts(remaining_shifts, shift_counts, people, night_counts, current_assignments)
     
-    # Final log: Shifts assigned per person
-    print("\n=== Shifts Assigned Per Person ===")
-    for person in people:
-        print(f"{person['name']}: {shift_counts[person['name']]} shifts")
-else:
-    if reason == "depth_exceeded":
-        print(f"\nNo solution found: Maximum depth ({max_depth}) was exceeded.")
+    # Run the backtracking assignment
+    max_depth = 10000  # You can adjust this
+    success, reason = backtrack_assign(remaining_shifts, people, shift_counts, night_counts, 
+                                     current_assignments, max_depth=max_depth)
+    
+    return success, current_assignments, reason, shift_counts, people  # Return additional values
+
+# Move all execution code inside this block
+if __name__ == '__main__':
+    success, assignments, reason, shift_counts, people = run_shift_algorithm()  # Receive additional values
+    
+    if success:
+        print("\n=== Shifts Successfully Assigned ===")
+        for day, shifts in assignments.items():
+            print(f"{day}:")
+            for shift, assigned in shifts.items():
+                if assigned:
+                    print(f"  {shift}: {', '.join(assigned)}")
+                else:
+                    print(f"  {shift}: Unassigned")
+        
+        print("Validation complete.")
+        
+        # Now we have access to shift_counts and people
+        print("\n=== Shifts Assigned Per Person ===")
+        for person in people:
+            print(f"{person['name']}: {shift_counts[person['name']]} shifts")
+            
     else:
-        print("\nNo solution found: No valid combination exists.")
+        if reason == "depth_exceeded":
+            print(f"\nNo solution found: Maximum depth ({max_depth}) was exceeded.")
+        else:
+            print("\nNo solution found: No valid combination exists.")

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Shift Scheduler</title>
+    <style>
+        .results {
+            margin-top: 20px;
+            white-space: pre-wrap;
+        }
+    </style>
+    <script>
+        function runAlgorithm() {
+            document.getElementById('status').textContent = 'Processing...';
+            document.getElementById('result').textContent = '';
+            
+            fetch('/run-algorithm')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('status').textContent = data.success ? 'Success!' : 'Failed: ' + data.reason;
+                    
+                    if (data.success) {
+                        let output = '=== Shifts Successfully Assigned ===\n\n';
+                        
+                        // Display assignments by day and shift
+                        Object.entries(data.assignments).forEach(([day, shifts]) => {
+                            output += `${day}:\n`;
+                            Object.entries(shifts).forEach(([shift, assigned]) => {
+                                if (assigned.length > 0) {
+                                    output += `  ${shift}: ${assigned.join(', ')}\n`;
+                                }
+                            });
+                        });
+                        
+                        // Display shifts per person
+                        output += '\n=== Shifts Assigned Per Person ===\n';
+                        Object.entries(data.shifts_per_person).forEach(([name, count]) => {
+                            output += `${name}: ${count} shifts\n`;
+                        });
+                        
+                        document.getElementById('result').textContent = output;
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('status').textContent = 'Error occurred';
+                    console.error('Error:', error);
+                });
+        }
+    </script>
+</head>
+<body>
+    <h1>Shift Scheduler</h1>
+    <button onclick="runAlgorithm()">Run Algorithm</button>
+    <p id="status"></p>
+    <pre id="result" class="results"></pre>
+</body>
+</html> 
