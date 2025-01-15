@@ -179,13 +179,20 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
         return sum(1 for person in combo 
                   if person["double_shift"] and would_create_double_shift(person, day, shift, current_assignments))
 
-    # The target names to look for
-    target_names = {"Avishay", "Shani Keynan"}
+    # A list of target name pairs to check for in combos and prioritize
+    target_names = [
+        {"Avishay", "Shani Keynan"},
+        {"Shani Keynan", "Eliran Ron"},
+        {"Shani Keynan", "Nir Ozery"},
+        {"Shani Keynan", "Yoram"},
+        {"Shani Keynan", "Maor"}
+    ]
 
-    # Function to check if combo has both target names
-    def has_both_target_names(combo, target_names):
+    
+    # The function returns True if the tested combo has any of the target name pairs
+    def has_both_target_names(combo, target_names_list):
         names_in_combo = {p["name"] for p in combo}
-        return len(names_in_combo & target_names) == 2  # Returns True only if both target names are present
+        return any(len(names_in_combo & target_pair) == 2 for target_pair in target_names_list)
 
     # Sort combinations with priority: both target names first, then double shifts, then constraint score
     combo_scores = sorted(combo_scores, 
