@@ -52,23 +52,25 @@ def parse_shift_requirements(df):
         shifts_per_day[day] = {}
         
         # Iterate through shifts and their corresponding values
-        for shift in ["Morning", "Noon", "Evening", "Night"]:
+        for shift in SHIFTS:
             if pd.notnull(row[shift]) and row[shift] > 0:  # Include only non-null and positive values
                 shifts_per_day[day][shift] = int(row[shift])
     
     return shifts_per_day
 
-
-
-# Define sheet parameters
-shift_constraint_data = get_google_sheet_data("Shifts", "Real Data - 15/01")
-shift_requirements_data = get_google_sheet_data("Shifts", "Needed Shifts")
-
-# Process the datasets
-shift_constraints = parse_shift_constraints(shift_constraint_data)
-shift_requirements = parse_shift_requirements(shift_requirements_data)
-
-
+# Add this function to get fresh data
+def get_fresh_data():
+    """
+    Gets fresh data from Google Sheets and processes it
+    Returns: (shift_constraints, shift_requirements)
+    """
+    shift_constraint_data = get_google_sheet_data("Shifts", "Real Data - 15/01")
+    shift_requirements_data = get_google_sheet_data("Shifts", "Needed Shifts")
+    
+    shift_constraints = parse_shift_constraints(shift_constraint_data)
+    shift_requirements = parse_shift_requirements(shift_requirements_data)
+    
+    return shift_constraints, shift_requirements
 
 # print(shift_requirements)
 # print(structured_data)

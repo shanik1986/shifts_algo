@@ -1,46 +1,17 @@
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from app.google_sheets.import_sheet_data import shift_constraints, SHIFTS, DAYS
-from app.google_sheets.import_sheet_data import shift_requirements as shifts_per_day
+
+# Add project root to Python path
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(project_root)
+
+# Now we can import from app
 from itertools import combinations
 from app.scheduler.validations import get_eligible_people, is_person_eligible_for_shift, is_shift_assigned, get_adjacent_shifts
-import sys
-from app.scheduler.constants import DAYS, SHIFTS  # Instead of from import_sheet_data
-from flask import jsonify
-
-# # Define constants for days and shifts
-# shifts_per_day = {
-    
-#    "Last Saturday": {"Night": 3},
-#    "Sunday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
-#     "Monday": {"Morning": 0, "Noon": 0, "Evening": 0, "Night": 3},
-#     "Tuesday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
-#     "Wednesday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
-#     "Thursday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
-#    "Friday": {"Morning": 3, "Noon": 3, "Evening": 3, "Night": 3},
-#     "Saturday": {"Morning": 3, "Noon": 3, "Evening": 3},
-# }
-
-# Placeholder for people data (we will add more dynamically later)
-
-
-
-# # # Test Data
-
-# people = [
-#      {"name": "Person1", "max_shifts": 4, "max_nights": 2, "unavailable": [], "double_shift": True, "are_three_shifts_possible": True},
-#      {"name": "Person2", "max_shifts": 4, "max_nights": 2, "unavailable": [], "double_shift": True, "are_three_shifts_possible": True},
-#      {"name": "Person3", "max_shifts": 6, "max_nights": 2, "unavailable": [], "double_shift": True, "are_three_shifts_possible": True},
-#  ]
-
-# shifts_per_day = {
-#      "Sunday": {"Morning": 1, "Evening": 1, "Night": 1},
-#      "Monday": {"Morning": 0, "Noon": 1, "Evening": 3, "Night": 1},
-#      "Tuesday": {"Morning": 1, "Evening": 1, "Night": 2},
-#      "Wednesday": {"Morning": 1, "Noon": 2},
-#  }
-
+from app.scheduler.constants import DAYS, SHIFTS
+from flask import jsonify, g, has_request_context
+from app.google_sheets.import_sheet_data import get_fresh_data
+import copy
 
 debug_mode = True
 def debug_log(message):
@@ -134,12 +105,16 @@ def would_create_double_shift(person, day, shift, current_assignments):
     
     return is_previous_assigned or is_next_assigned
 
-def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, current_assignments, max_depth=10000, depth=0):
-    import copy
+def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, 
+                    current_assignments, max_depth=10000, depth=0, 
+                    should_continue=lambda: True, iteration_counter=0):
     """
     Assign people to shifts using backtracking to ensure all constraints are satisfied.
     Returns: (bool, str) - (success, reason for failure if any)
     """
+    # Check for cancellation every 100 iterations
+    if iteration_counter % 100 == 0 and not should_continue():
+        return False, "Request cancelled"
 
     if not remaining_shifts:
         return True, "success"
@@ -251,8 +226,12 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
         
         ranked_shifts = copy.deepcopy(rank_shifts(remaining_shifts, shift_counts, people, night_counts, current_assignments))
         if validate_remaining_shifts(ranked_shifts, people, shift_counts, night_counts, current_assignments):
-            result, reason = backtrack_assign(ranked_shifts, people, shift_counts, night_counts, 
-                                           current_assignments, max_depth=max_depth, depth=depth + 1)
+            result, reason = backtrack_assign(
+                ranked_shifts, people, shift_counts, night_counts, 
+                current_assignments, max_depth=max_depth, depth=depth + 1,
+                should_continue=should_continue,
+                iteration_counter=iteration_counter  # Pass the counter
+            )
             
             if result:
                 return True, "success"
@@ -301,11 +280,25 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
 def get_hello_world():
     return "Hello World from shifts_algo.py!"
 
-def run_shift_algorithm():
-    #Prepares the data for the algorithm
+def run_shift_algorithm(shift_requirements=None, shift_constraints=None):
+    """
+    Run the algorithm with either passed data or fetch from Google Sheets
+    """
+    def should_continue():
+        """Check if we should continue processing"""
+        if has_request_context():
+            return getattr(g, 'request_active', True)
+        return True  # Continue if not in request context (e.g., running locally)
+
+    # If no data passed, get fresh data from import_sheet_data
+    if shift_requirements is None or shift_constraints is None:
+        shift_constraints, shift_requirements = get_fresh_data()
+
+    # Use the data (either passed or from sheets)
     people = shift_constraints
     remaining_shifts = []
-    for day, shifts in shifts_per_day.items():
+    
+    for day, shifts in shift_requirements.items():
         for shift, needed in shifts.items():
             if needed > 0:
                 remaining_shifts.append((day, shift, needed))
@@ -336,16 +329,23 @@ def run_shift_algorithm():
     # Sort shifts based on constraint level
     remaining_shifts = rank_shifts(remaining_shifts, shift_counts, people, night_counts, current_assignments)
     
-    # Run the backtracking assignment
-    max_depth = 10000  # You can adjust this
-    success, reason = backtrack_assign(remaining_shifts, people, shift_counts, night_counts, 
-                                     current_assignments, max_depth=max_depth)
+    # Run the backtracking assignment with cancellation check
+    max_depth = 10000
+    success, reason = backtrack_assign(
+        remaining_shifts, 
+        people, 
+        shift_counts, 
+        night_counts, 
+        current_assignments, 
+        max_depth=max_depth,
+        should_continue=should_continue  # Pass the check function
+    )
     
-    return success, current_assignments, reason, shift_counts, people  # Return additional values
+    return success, current_assignments, reason, shift_counts, people
 
 # Move all execution code inside this block
 if __name__ == '__main__':
-    success, assignments, reason, shift_counts, people = run_shift_algorithm()  # Receive additional values
+    success, assignments, reason, shift_counts, people = run_shift_algorithm()
     
     if success:
         print("\n=== Shifts Successfully Assigned ===")
@@ -357,15 +357,9 @@ if __name__ == '__main__':
                 else:
                     print(f"  {shift}: Unassigned")
         
-        print("Validation complete.")
-        
-        # Now we have access to shift_counts and people
         print("\n=== Shifts Assigned Per Person ===")
         for person in people:
             print(f"{person['name']}: {shift_counts[person['name']]} shifts")
             
     else:
-        if reason == "depth_exceeded":
-            print(f"\nNo solution found: Maximum depth ({max_depth}) was exceeded.")
-        else:
-            print("\nNo solution found: No valid combination exists.")
+        print(f"\nNo solution found: {reason}")

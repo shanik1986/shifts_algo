@@ -24,7 +24,9 @@
         }
     </style>
     <script>
-        function runAlgorithm() {
+        const timeoutSeconds = parseInt("{{ timeout_seconds }}");
+        
+        function generateSchedule() {
             document.getElementById('status').textContent = 'Processing...';
             document.getElementById('result').textContent = '';
             
@@ -32,11 +34,11 @@
             document.getElementById('loader').style.display = 'block';
             document.getElementById('timeoutError').style.display = 'none';
             
-            // Set timeout
+            // Set timeout using the constant
             const timeoutId = setTimeout(() => {
                 document.getElementById('timeoutError').style.display = 'block';
                 document.getElementById('loader').style.display = 'none';
-            }, 5000);
+            }, timeoutSeconds * 1000);  // Convert seconds to milliseconds
             
             // Define the order of days and shifts
             const dayOrder = [
@@ -48,50 +50,50 @@
             fetch('/generate_schedule', {
                 method: 'POST'
             })
-                .then(response => response.json())
-                .then(data => {
-                    // Clear timeout and hide loader
-                    clearTimeout(timeoutId);
-                    document.getElementById('loader').style.display = 'none';
+            .then(response => response.json())
+            .then(data => {
+                // Clear timeout and hide loader
+                clearTimeout(timeoutId);
+                document.getElementById('loader').style.display = 'none';
+                
+                document.getElementById('status').textContent = data.success ? 'Success!' : 'Failed: ' + data.reason;
+                
+                if (data.success) {
+                    let output = '=== Shifts Successfully Assigned ===\n\n';
                     
-                    document.getElementById('status').textContent = data.success ? 'Success!' : 'Failed: ' + data.reason;
-                    
-                    if (data.success) {
-                        let output = '=== Shifts Successfully Assigned ===\n\n';
-                        
-                        // Display assignments by day and shift in correct order
-                        dayOrder.forEach(day => {
-                            if (data.assignments[day]) {
-                                output += `${day}:\n`;
-                                shiftOrder.forEach(shift => {
-                                    const assigned = data.assignments[day][shift];
-                                    if (assigned && assigned.length > 0) {
-                                        output += `  ${shift}: ${assigned.join(', ')}\n`;
-                                    } else {
-                                        output += `  ${shift}: Unassigned\n`;
-                                    }
-                                });
-                            }
-                        });
-                        
-                        // Sort shifts per person alphabetically
-                        output += '\n=== Shifts Assigned Per Person ===\n';
-                        Object.entries(data.shifts_per_person)
-                            .sort(([a], [b]) => a.localeCompare(b))
-                            .forEach(([name, count]) => {
-                                output += `${name}: ${count} shifts\n`;
+                    // Display assignments by day and shift in correct order
+                    dayOrder.forEach(day => {
+                        if (data.assignments[day]) {
+                            output += `${day}:\n`;
+                            shiftOrder.forEach(shift => {
+                                const assigned = data.assignments[day][shift];
+                                if (assigned && assigned.length > 0) {
+                                    output += `  ${shift}: ${assigned.join(', ')}\n`;
+                                } else {
+                                    output += `  ${shift}: Unassigned\n`;
+                                }
                             });
-                        
-                        document.getElementById('result').textContent = output;
-                    }
-                })
-                .catch(error => {
-                    // Clear timeout and hide loader
-                    clearTimeout(timeoutId);
-                    document.getElementById('loader').style.display = 'none';
-                    document.getElementById('status').textContent = 'Error occurred';
-                    console.error('Error:', error);
-                });
+                        }
+                    });
+                    
+                    // Sort shifts per person alphabetically
+                    output += '\n=== Shifts Assigned Per Person ===\n';
+                    Object.entries(data.shifts_per_person)
+                        .sort(([a], [b]) => a.localeCompare(b))
+                        .forEach(([name, count]) => {
+                            output += `${name}: ${count} shifts\n`;
+                        });
+                    
+                    document.getElementById('result').textContent = output;
+                }
+            })
+            .catch(error => {
+                // Clear timeout and hide loader
+                clearTimeout(timeoutId);
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('status').textContent = 'Error occurred';
+                console.error('Error:', error);
+            });
         }
 
         document.getElementById('scheduleForm').onsubmit = function(e) {
@@ -133,12 +135,17 @@
 </head>
 <body>
     <h1>Shift Scheduler</h1>
-    <button onclick="runAlgorithm()">Run Algorithm</button>
+    <button onclick="generateSchedule()">Run Algorithm</button>
     <p id="status"></p>
     <pre id="result" class="results"></pre>
     <div id="loader" class="loader"></div>
     <div id="timeoutError" style="color: red; display: none;">
         The operation is taking longer than expected. Please try again.
     </div>
+    {% if error %}
+    <div class="alert alert-danger" role="alert">
+        {{ error }}
+    </div>
+    {% endif %}
 </body>
 </html> 
