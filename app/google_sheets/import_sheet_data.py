@@ -8,13 +8,15 @@ SHIFTS = ["Morning", "Noon", "Evening", "Night"]
 
 # Parse the dataset into a structured format
 def parse_shift_constraints(df):
-    # Fix the "Double Shifts?" and "3 Shift Days?" columns to ensure proper booleans
-    df["Double Shifts?"] = df["Double Shifts?"].astype(str).str.strip().str.upper() == "TRUE"
-    df["3 Shift Days?"] = df["3 Shift Days?"].astype(str).str.strip().str.upper() == "TRUE"
+    # Fix the boolean columns to ensure proper booleans
+    boolean_columns = ["Double Shifts?", "3 Shift Days?", "Night + Noon"]
+    for col in boolean_columns:
+        df[col] = df[col].astype(str).str.strip().str.upper() == "TRUE"
+
     processed_data = []
     for _, row in df.iterrows():
         unavailable = []
-        column_index = 8  # Start with "Last Saturday Night"
+        column_index = 9  # Start with "Last Saturday Night"
 
         # Loop through days and shifts
         for day in DAYS:
@@ -34,7 +36,8 @@ def parse_shift_constraints(df):
             "double_shift": row["Double Shifts?"],
             "max_shifts": int(row["Max Shifts"]),
             "max_nights": int(row["Max Nights"]),
-             "are_three_shifts_possible": row["3 Shift Days?"],
+            "are_three_shifts_possible": row["3 Shift Days?"],
+            "night_and_noon_possible": row["Night + Noon"],
             "unavailable": unavailable
         }
         processed_data.append(person)

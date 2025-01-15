@@ -1,4 +1,3 @@
-
 """
 Constraints:
 1) Specific unavailable shifts
@@ -12,6 +11,8 @@ Constraints:
 
 
 """
+from app.scheduler.constants import DAYS, SHIFTS
+
 def debug_log(message, debug_mode = True):
     if debug_mode:
         print(message)
@@ -40,115 +41,126 @@ def is_third_shift(person, day, current_assignments):
 
 
 def get_eligible_people(day, shift, people, shift_counts, night_counts, current_assignments, debug_mode = True):
-    from app.scheduler.shifts_algo import DAYS, SHIFTS
     """
     Returns a list of eligible people for a specific day and shift.
-    Eligibility is based on:
-      1) Availability (not unavailable for this shift)
-      2) Max shift limit not exceeded
-      3) Not working a night shift before a morning shift
     """
     debug_log(f"\nGetting available people for {day} {shift}", debug_mode)
     debug_log("================================================", debug_mode)
 
     eligible_people = []
-    day_index = DAYS.index(day)
-    previous_day = DAYS[day_index - 1] if day_index > 0 else False
-    next_day = DAYS[day_index + 1] if day_index < len(DAYS) - 1 else False
-
-    shift_index = SHIFTS.index(shift)
-    previous_shift = SHIFTS[shift_index - 1] if shift_index > 0 else SHIFTS[(len(SHIFTS) - 1)]
-    next_shift = SHIFTS[shift_index + 1] if shift_index < 3 else SHIFTS[0]
-
+    
     for person in people:
         debug_log(f"\nChecking {person['name']}'s availability...", debug_mode)
         
-        # Check if this specific shift is available for this person
-        if is_shift_blocked(day,shift,person["unavailable"]):
-            debug_log(f"{person['name']} not eligible: Shift is unavailable", debug_mode)
-            continue
-        
-        # Check if max shifts for person reached
-        if is_max_shifts_reached(person, shift_counts):
-            debug_log(f"{person['name']} not eligible: Already reached his maximum shifts ({person['max_shifts']})", debug_mode)
-            continue
-
-        # Check if this is the third shift today
-        if (is_third_shift)(person, day, current_assignments):
-                if(not(person["are_three_shifts_possible"])): 
-                    debug_log(f"{person['name']} not eligible: Third shift a day restriction {previous_day} night",debug_mode)
-                    continue
-                elif shift == "Evening" or is_shift_assigned(person, day, "Evening", current_assignments):
-                    continue
-        
-        # # Check for Noon after night constraint or Night before Noon constraint
-        # if (shift == "Noon" and previous_day) or (shift == "Night" and next_day): 
-        #     if shift == "Noon" and is_shift_assigned(person, previous_day, "Night", current_assignments):
-        #         debug_log(f"{person['name']} not eligible: Already assigned {previous_day} night", debug_mode)
-        #         continue
-        #     elif shift == "Night" and is_shift_assigned(person, next_day, "Noon", current_assignments):
-        #         debug_log(f"{person['name']} not eligible: Already assigned {next_day} noon", debug_mode)
-        #         continue
-        
-
-
-
-
-        if shift == "Morning":
-            if previous_day and is_shift_assigned(person, previous_day, "Night", current_assignments):
-                # Check that no shift assigned last night (if not last Saturday)
-                debug_log(f"{person['name']} not eligible: Already assigned {previous_day} night",debug_mode)
-                continue
-
-            if not(person['double_shift']) and person['name'] in current_assignments[day][next_shift]:
-            #     Check if person allows consecutive shifts and whether it's assigned
-                debug_log(f"{person['name']} not eligible: No double shifts allowed. Already assigned for {day} {next_shift}"), debug_mode
-                continue
-        
-        elif shift == "Noon":    
-            if not(person["double_shift"]) and (is_shift_assigned(person, day, next_shift,current_assignments) or is_shift_assigned(person, day, previous_shift,current_assignments)):
-                # Check if person allows consecutive shifts and whether it's assigned
-                debug_log(f"{person['name']} not eligible: No double shifts allowed. Already assigned for {day} {next_shift} or {previous_shift}", debug_mode)
-                continue
-
-        
-        elif shift == "Evening":
-            if is_shift_assigned(person, day, "Night", current_assignments):
-                # Check that no night shift assigned today
-                debug_log(f"{person['name']} not eligible: Already assigned {day} night", debug_mode)
-                continue
-            if not(person["double_shift"]) and (is_shift_assigned(person, day, next_shift,current_assignments) or is_shift_assigned(person, day, previous_shift,current_assignments)):
-                # Check if person allows consecutive shifts and whether it's assigned
-                debug_log(f"{person['name']} not eligible: No double shifts allowed. Already assigned for {day} {previous_shift}", debug_mode)
-                continue
-            
-
-        elif shift == "Night":
-            if night_counts[person['name']] >= person['max_nights']:
-                # Check if person reached max nights limit
-                debug_log(f"\n{person['name']} not eligible: Max night limitation breached ({person['max_nights']})", debug_mode)
-                continue
-            
-            if next_day and is_shift_assigned(person, next_day, "Morning", current_assignments):
-                # Check that no shift assigned tomorrow morning (if not Saturday)
-                debug_log(f"{person['name']} not eligible: Already assigned {next_day} morning", debug_mode)
-                continue
-            
-            if not(person["double_shift"]) and (is_shift_assigned(person, day, previous_shift,current_assignments)):
-                #Check that person isn't doing a double shift without him consenting
-                debug_log(f"{person['name']} not eligible: No double shifts allowed. Already assigned for {day} {previous_shift}", debug_mode)
-                continue
-            
-            if is_shift_assigned(person, day, "Evening", current_assignments):
-                # Check that no shift assigned today evening
-                debug_log(f"{person['name']} not eligible: Already assigned {day} Evening", debug_mode)
-                continue
-    
-        # Add eligible person
-        debug_log(f"{person['name']} is eligible for {day} {shift}", debug_mode)
-        eligible_people.append(person)
+        if is_person_eligible_for_shift(person, day, shift, shift_counts, night_counts, current_assignments):
+            debug_log(f"{person['name']} is eligible for {day} {shift}", debug_mode)
+            eligible_people.append(person)
+        # else:
+        #     debug_log(f"{person['name']} not eligible for {day} {shift}", debug_mode)
     
     debug_log(f"\nEligible people for {day} {shift}: {[p['name'] for p in eligible_people]}")
-
     return eligible_people
+            
+def is_person_eligible_for_shift(person, day, shift, shift_counts, night_counts, current_assignments, debug_mode=True):
+    """
+    Check if a specific person is eligible for a given shift based on all constraints.
+    Returns: bool indicating if person is eligible
+    """
+    previous_day, next_day = get_adjacent_days(day)
+    previous_shift, next_shift = get_adjacent_shifts(shift)
+
+    # Check basic constraints
+    if is_shift_blocked(day, shift, person["unavailable"]):
+        debug_log(f"{person['name']} not eligible: Shift is unavailable", debug_mode)
+        return False
+    
+    if is_max_shifts_reached(person, shift_counts):
+        debug_log(f"{person['name']} not eligible: Already reached their maximum shifts ({person['max_shifts']})", debug_mode)
+        return False
+
+    # Check for Noon after night constraint based on person's preference
+    if shift == "Noon" and previous_day:
+        if is_shift_assigned(person, previous_day, "Night", current_assignments):
+            if not person["night_and_noon_possible"]:
+                debug_log(f"{person['name']} not eligible: Cannot do Noon after Night shift and assigned {previous_day} night" , debug_mode)
+                return False
+            
+    # Check for Night before Noon constraint based on person's preference
+    elif shift == "Night" and next_day:
+        if is_shift_assigned(person, next_day, "Noon", current_assignments):
+            if not person["night_and_noon_possible"]:
+                debug_log(f"{person['name']} not eligible: Cannot do Night before Noon shift and assigned {next_day} noon", debug_mode)
+                return False
+
+    if is_third_shift(person, day, current_assignments):
+        if not person["are_three_shifts_possible"]:
+            debug_log(f"{person['name']} not eligible: Third shift a day restriction", debug_mode)
+            return False
+        elif shift == "Evening" or is_shift_assigned(person, day, "Evening", current_assignments):
+            debug_log(f"{person['name']} not eligible: Cannot do Evening shift as third shift", debug_mode)
+            return False
+
+    # Shift-specific constraints
+    if shift == "Morning":
+        if previous_day and is_shift_assigned(person, previous_day, "Night", current_assignments):
+            debug_log(f"{person['name']} not eligible: Already assigned {previous_day} night", debug_mode)
+            return False
+        if not person['double_shift'] and is_shift_assigned(person, day, next_shift, current_assignments):
+            debug_log(f"{person['name']} not eligible: No double shifts allowed. Already assigned for {day} {next_shift}", debug_mode)
+            return False
+
+    elif shift == "Noon":    
+        if not person["double_shift"] and (
+            is_shift_assigned(person, day, next_shift, current_assignments) or 
+            is_shift_assigned(person, day, previous_shift, current_assignments)
+        ):
+            debug_log(f"{person['name']} not eligible: No double shifts allowed. Already assigned for {day} {next_shift} or {previous_shift}", debug_mode)
+            return False
+
+    elif shift == "Evening":
+        if is_shift_assigned(person, day, "Night", current_assignments):
+            debug_log(f"{person['name']} not eligible: Already assigned {day} night", debug_mode)
+            return False
+        if not person["double_shift"] and (
+            is_shift_assigned(person, day, next_shift, current_assignments) or 
+            is_shift_assigned(person, day, previous_shift, current_assignments)
+        ):
+            debug_log(f"{person['name']} not eligible: No double shifts allowed. Already assigned for {day} {previous_shift}", debug_mode)
+            return False
+
+    elif shift == "Night":
+        if night_counts[person['name']] >= person['max_nights']:
+            debug_log(f"{person['name']} not eligible: Max night limitation breached ({person['max_nights']})", debug_mode)
+            return False
+        if next_day and is_shift_assigned(person, next_day, "Morning", current_assignments):
+            debug_log(f"{person['name']} not eligible: Already assigned {next_day} morning", debug_mode)
+            return False
+        if not person["double_shift"] and is_shift_assigned(person, day, previous_shift, current_assignments):
+            debug_log(f"{person['name']} not eligible: No double shifts allowed. Already assigned for {day} {previous_shift}", debug_mode)
+            return False
+        if is_shift_assigned(person, day, "Evening", current_assignments):
+            debug_log(f"{person['name']} not eligible: Already assigned {day} Evening", debug_mode)
+            return False
+
+    return True
+            
+def get_adjacent_shifts(shift):
+    """
+    Get the previous and next shifts for a given shift.
+    Returns: (previous_shift, next_shift)
+    """
+    shift_index = SHIFTS.index(shift)
+    previous_shift = SHIFTS[shift_index - 1] if shift_index > 0 else None
+    next_shift = SHIFTS[shift_index + 1] if shift_index < len(SHIFTS) - 1 else None
+    return previous_shift, next_shift
+
+def get_adjacent_days(day):
+    """
+    Get the previous and next days for a given day.
+    Returns: (previous_day, next_day)
+    """
+    day_index = DAYS.index(day)
+    previous_day = DAYS[day_index - 1] if day_index > 0 else None
+    next_day = DAYS[day_index + 1] if day_index < len(DAYS) - 1 else None
+    return previous_day, next_day
             

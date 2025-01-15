@@ -4,8 +4,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from app.google_sheets.import_sheet_data import shift_constraints, SHIFTS, DAYS
 from app.google_sheets.import_sheet_data import shift_requirements as shifts_per_day
 from itertools import combinations
-from app.scheduler.validations import get_eligible_people
+from app.scheduler.validations import get_eligible_people, is_person_eligible_for_shift, is_shift_assigned, get_adjacent_shifts
 import sys
+from app.scheduler.constants import DAYS, SHIFTS  # Instead of from import_sheet_data
 
 # # Define constants for days and shifts
 # shifts_per_day = {
@@ -81,7 +82,7 @@ def validate_remaining_shifts(remaining_shifts, people, shift_counts):
     Validate that all remaining shifts have enough eligible people to fill them.
     """
     for i, (day, shift, needed) in enumerate(remaining_shifts):
-        eligible_people = get_eligible_people(day, shift, people, shift_counts, night_counts, current_assignments, debug_mode=True)
+        eligible_people = get_eligible_people(day, shift, people, shift_counts, night_counts, current_assignments, debug_mode=False)
         if len(eligible_people) < needed:
             print(f"Validation failed: {day} {shift} needs {needed} people, "
                     f"but only {len(eligible_people)} are available.")
@@ -93,34 +94,44 @@ def get_previous_day(days, day):
     index = days.index(day)
     return days[index - 1] if index > 0 else None
 
-# def validate_final_constraints(current_assignments):
-#     """
-#     Validate that the final assignments respect all constraints, including night-to-morning.
-#     """
-#     for day, day_shifts in current_assignments.items():
-#         for shift, people in day_shifts.items():
-#             if shift == "Morning":
-#                 previous_day = get_previous_day(DAYS, day)
-#                 if previous_day:
-#                     night_people = [p["name"] for p in current_assignments[previous_day]["Night"]]
-#                     for person in people:
-#                         if person["name"] in night_people:
-#                             debug_log(f"Final validation failed: {person['name']} assigned to both {previous_day} Night and {day} Morning!")
-#                             return False
-#     return True
-
 
 def calculate_person_constraint(person, remaining_shifts):
     """
     Calculate the constraint score for a person based on the number of shifts
-    they are eligible for compared to their maximum shifts.
-    """
-    available_shifts = [
-        (day, shift) for i, (day, shift, needed) in enumerate(remaining_shifts)
-        if (day, shift) not in person["unavailable"]
-    ]
-    return len(available_shifts) / person["max_shifts"] if person["max_shifts"] > 0 else float("inf")
+    they are actually eligible for compared to their remaining shift capacity.
     
+    Returns:
+        float: Score representing how constrained this person is. 
+        Lower score = more constrained (fewer available shifts relative to remaining capacity)
+    """
+    # Calculate remaining shifts capacity for this person
+    remaining_capacity = person["max_shifts"] - shift_counts[person["name"]]
+    if remaining_capacity <= 0:
+        return float("inf")  # Person has no remaining capacity
+        
+    # Count shifts the person is actually eligible for
+    eligible_shift_count = 0
+    for day, shift, needed in remaining_shifts:
+        if is_person_eligible_for_shift(
+            person, day, shift,
+            shift_counts, night_counts, current_assignments
+        ):
+            eligible_shift_count += 1
+            
+    return eligible_shift_count / remaining_capacity if remaining_capacity > 0 else float("inf")
+    
+
+def would_create_double_shift(person, day, shift, current_assignments):
+    """
+    Check if assigning this person to this shift would create a double shift
+    """
+    previous_shift, next_shift = get_adjacent_shifts(shift)
+    
+    # Check if person is assigned to adjacent shifts
+    is_previous_assigned = previous_shift and is_shift_assigned(person, day, previous_shift, current_assignments)
+    is_next_assigned = next_shift and is_shift_assigned(person, day, next_shift, current_assignments)
+    
+    return is_previous_assigned or is_next_assigned
 
 def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, current_assignments, max_depth=10000, depth=0):
     import copy
@@ -128,13 +139,6 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
     Assign people to shifts using backtracking to ensure all constraints are satisfied.
     Returns: (bool, str) - (success, reason for failure if any)
     """
-#     if depth > max_depth:
-#         debug_log(f"""
-# Depth limit ({depth}/{max_depth}) exceeded
-# Total shifts assigned so far: {sum(shift_counts.values())}
-# Remaining shifts: {remaining_shifts}
-# """)
-#         return False, "depth_exceeded"
 
     if not remaining_shifts:
         return True, "success"
@@ -160,27 +164,37 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, curre
     # Compute constraint scores for each eligible person
     person_scores = {p["name"]: calculate_person_constraint(p, remaining_shifts) for p in eligible_people}
 
-    # Generate all combinations and calculate their constraint scores
+    # Generate all combinations and calculate their scores
     combo_scores = []
-    for combo in combinations(eligible_people, needed):
-        combo_score = sum(person_scores[p["name"]] for p in combo)  # Sum constraint scores of people in the combo
-        combo_scores.append((combo_score, list(combo)))
+    for combo in all_combos:
+        # Calculate regular constraint score
+        constraint_score = sum(person_scores[p["name"]] for p in combo)
+        combo_scores.append((constraint_score, list(combo)))
 
-    # Sort combinations by their total constraint score (lowest score first)
+    # Sort combinations by their constraint score (lowest score first)
     combo_scores.sort(key=lambda x: x[0])
 
-    # # The target names to look for
+    # Count double shift opportunities in each combo
+    def count_double_shifts(combo, day, shift, current_assignments):
+        return sum(1 for person in combo 
+                  if person["double_shift"] and would_create_double_shift(person, day, shift, current_assignments))
+
+    # The target names to look for
     target_names = {"Avishay", "Shani Keynan"}
 
-    # Function to check if any of the dicts in an item contain a target name
-    def contains_target_name(item, target_names):
-        _, dicts = item
-        return any(d["name"] in target_names for d in dicts)
+    # Function to check if combo has both target names
+    def has_both_target_names(combo, target_names):
+        names_in_combo = {p["name"] for p in combo}
+        return len(names_in_combo & target_names) == 2  # Returns True only if both target names are present
 
-    # Reorder the list: items with target names go first
-    combo_scores = sorted(combo_scores, key=lambda x: not contains_target_name(x, target_names))
+    # Sort combinations with priority: both target names first, then double shifts, then constraint score
+    combo_scores = sorted(combo_scores, 
+                         key=lambda x: (
+                             -int(has_both_target_names(x[1], target_names)),  # Both target names first (1 or 0)
+                             -count_double_shifts(x[1], day, shift, current_assignments),  # Then double shifts
+                             x[0]  # Then constraint score
+                         ))
 
-    
     tested_combos = []
     remaining_combos = [[p["name"] for p in combo] for _, combo in combo_scores]
     # Try all combinations of eligible people for this shift
