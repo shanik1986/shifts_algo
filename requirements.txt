@@ -1,0 +1,8 @@
+Flask
+Flask-SQLAlchemy
+python-dotenv
+gunicorn
+pandas  # You need this for your Google Sheets integration
+gspread  # You need this for Google Sheets
+oauth2client  # You need this for Google authentication
+# Add any other dependencies your project uses 
