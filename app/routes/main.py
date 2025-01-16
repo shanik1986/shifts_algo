@@ -3,6 +3,7 @@ from app.google_sheets.import_sheet_data import get_fresh_data
 from app.scheduler.shifts_algo import run_shift_algorithm
 
 bp = Blueprint('main', __name__)
+TIMEOUT_SECONDS = 15
 
 @bp.route('/')
 def index():
@@ -16,7 +17,8 @@ def generate_schedule():
     # Run the algorithm with fresh data
     success, assignments, reason, shift_counts, people = run_shift_algorithm(
         shift_requirements=shift_requirements,
-        shift_constraints=shift_constraints
+        shift_constraints=shift_constraints,
+        timeout=TIMEOUT_SECONDS
     )
     
     if success:

@@ -1,5 +1,7 @@
 import sys
 import os
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
+import threading
 
 # Add project root to Python path
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -106,11 +108,15 @@ def would_create_double_shift(person, day, shift, current_assignments):
     return is_previous_assigned or is_next_assigned
 
 def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, 
-                    current_assignments, max_depth=10000, depth=0):
+                    current_assignments, max_depth=10000, depth=0, cancel_event=None):
     """
     Assign people to shifts using backtracking to ensure all constraints are satisfied.
     Returns: (bool, str) - (success, reason for failure if any)
     """
+    # Check for cancellation at the start of each recursive call
+    if cancel_event and cancel_event.is_set():
+        return False, "Algorithm cancelled"
+
     if not remaining_shifts:
         return True, "success"
 
@@ -223,7 +229,7 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts,
         if validate_remaining_shifts(ranked_shifts, people, shift_counts, night_counts, current_assignments):
             result, reason = backtrack_assign(
                 ranked_shifts, people, shift_counts, night_counts, 
-                current_assignments, max_depth=max_depth, depth=depth + 1
+                current_assignments, max_depth=max_depth, depth=depth + 1, cancel_event=cancel_event
             )
             
             if result:
@@ -270,66 +276,72 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts,
     return False, "no_valid_combination"
 
 
-def get_hello_world():
-    return "Hello World from shifts_algo.py!"
 
-def run_shift_algorithm(shift_requirements=None, shift_constraints=None):
+
+def run_shift_algorithm(shift_requirements=None, shift_constraints=None, timeout=None):
     """
-    Run the algorithm with either passed data or fetch from Google Sheets
+    Run the algorithm with timeout
     """
-    # If no data passed, get fresh data from import_sheet_data
-    if shift_requirements is None or shift_constraints is None:
-        shift_constraints, shift_requirements = get_fresh_data()
-
-    # Use the data (either passed or from sheets)
-    people = shift_constraints
-    remaining_shifts = []
+    cancel_event = threading.Event()
     
-    for day, shifts in shift_requirements.items():
-        for shift, needed in shifts.items():
-            if needed > 0:
-                remaining_shifts.append((day, shift, needed))
+    def algorithm_worker(shift_requirements, shift_constraints):
+        # If no data passed, get fresh data from import_sheet_data
+        if shift_requirements is None or shift_constraints is None:
+            shift_constraints, shift_requirements = get_fresh_data()
 
-    # Calculate maximum possible depth
-    total_shifts = sum(needed for _, _, needed in remaining_shifts)
-    print(f"Total shifts that need to be assigned: {total_shifts}")
+        people = shift_constraints
+        remaining_shifts = []
+        
+        for day, shifts in shift_requirements.items():
+            for shift, needed in shifts.items():
+                if needed > 0:
+                    remaining_shifts.append((day, shift, needed))
 
-    # Calculate max combinations for any shift
-    max_combinations = 0
-    for day, shift, needed in remaining_shifts:
-        num_combinations = len(list(combinations(people, needed)))
-        if num_combinations > max_combinations:
-            max_combinations = num_combinations
-            max_shift = (day, shift, needed)
 
-    print(f"Maximum combinations ({max_combinations}) occurs for shift: {max_shift}")
 
-    # Calculate theoretical maximum depth
-    theoretical_max_depth = total_shifts * max_combinations
-    print(f"Theoretical maximum depth: {theoretical_max_depth}")
+        # Calculate max combinations for any shift
+        max_combinations = 0
+        for day, shift, needed in remaining_shifts:
+            num_combinations = len(list(combinations(people, needed)))
+            if num_combinations > max_combinations:
+                max_combinations = num_combinations
+                max_shift = (day, shift, needed)
 
-    # Prepare initial assignments and counts
-    current_assignments = {day: {shift: [] for shift in SHIFTS} for day in DAYS}
-    shift_counts = {p["name"]: 0 for p in people}
-    night_counts = {p["name"]: 0 for p in people}
-    
-    # Sort shifts based on constraint level
-    remaining_shifts = rank_shifts(remaining_shifts, shift_counts, people, night_counts, current_assignments)
-    
-    # Run the backtracking assignment
-    max_depth = 10000
-    success, reason = backtrack_assign(
-        remaining_shifts, 
-        people, 
-        shift_counts, 
-        night_counts, 
-        current_assignments, 
-        max_depth=max_depth
-    )
-    
-    return success, current_assignments, reason, shift_counts, people
+        print(f"Maximum combinations ({max_combinations}) occurs for shift: {max_shift}")
 
-# Move all execution code inside this block
+
+
+        # Prepare initial assignments and counts
+        current_assignments = {day: {shift: [] for shift in SHIFTS} for day in DAYS}
+        shift_counts = {p["name"]: 0 for p in people}
+        night_counts = {p["name"]: 0 for p in people}
+        
+        # Sort shifts based on constraint level
+        remaining_shifts = rank_shifts(remaining_shifts, shift_counts, people, night_counts, current_assignments)
+        
+        # Run the backtracking assignment
+        max_depth = 10000
+        success, reason = backtrack_assign(
+            remaining_shifts, 
+            people, 
+            shift_counts, 
+            night_counts, 
+            current_assignments,
+            max_depth=max_depth,
+            cancel_event=cancel_event
+        )
+        
+        return success, current_assignments, reason, shift_counts, people
+
+    with ThreadPoolExecutor() as executor:
+        future = executor.submit(algorithm_worker, shift_requirements, shift_constraints)
+        try:
+            return future.result(timeout=timeout)
+        except TimeoutError:
+            cancel_event.set()  # Signal algorithm to stop
+            return False, None, "Algorithm timed out", None, None
+
+
 if __name__ == '__main__':
     success, assignments, reason, shift_counts, people = run_shift_algorithm()
     
