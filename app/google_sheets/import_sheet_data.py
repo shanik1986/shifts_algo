@@ -2,6 +2,7 @@ import pandas as pd
 from app.google_sheets.init_sheet_access import get_google_sheet_data
 from app.scheduler.constants import DAYS, SHIFTS
 import sys
+from app.scheduler.person import Person
 
 # Parse the dataset into a structured format
 def parse_shift_constraints(df):
@@ -27,17 +28,28 @@ def parse_shift_constraints(df):
                     unavailable.append((day, shift))
                 column_index += 1
 
-        # Structure for each person
-        person = {
-            "name": row["Name"],
-            "double_shift": row["Double Shifts?"],
-            "max_shifts": int(row["Max Shifts"]),
-            "max_nights": int(row["Max Nights"]),
-            "are_three_shifts_possible": row["3 Shift Days?"],
-            "night_and_noon_possible": row["Night + Noon"],
-            "unavailable": unavailable
+        # Create Person object but convert to dict to maintain compatibility
+        person = Person(
+            name=row["Name"],
+            unavailable=unavailable,
+            double_shift=row["Double Shifts?"],
+            max_shifts=int(row["Max Shifts"]),
+            max_nights=int(row["Max Nights"]),
+            are_three_shifts_possible=row["3 Shift Days?"],
+            night_and_noon_possible=row["Night + Noon"]
+        )
+        
+        # Temporarily convert back to dict to maintain compatibility
+        person_dict = {
+            "name": person.name,
+            "unavailable": person.unavailable,
+            "double_shift": person.double_shift,
+            "max_shifts": person.max_shifts,
+            "max_nights": person.max_nights,
+            "are_three_shifts_possible": person.are_three_shifts_possible,
+            "night_and_noon_possible": person.night_and_noon_possible
         }
-        processed_data.append(person)
+        processed_data.append(person_dict)
     
     return processed_data
 
