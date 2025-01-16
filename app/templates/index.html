@@ -45,6 +45,7 @@
             .then(response => response.json())
             .then(data => {
                 document.getElementById('loader').style.display = 'none';
+                
                 document.getElementById('status').textContent = data.success ? 'Success!' : 'Failed: ' + data.reason;
                 
                 if (data.success) {
@@ -90,9 +91,6 @@
     <p id="status"></p>
     <pre id="result" class="results"></pre>
     <div id="loader" class="loader"></div>
-    <div id="timeoutError" style="color: red; display: none;">
-        The operation is taking longer than expected. Please try again.
-    </div>
     {% if error %}
     <div class="alert alert-danger" role="alert">
         {{ error }}
