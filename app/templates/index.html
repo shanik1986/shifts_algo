@@ -34,7 +34,6 @@
             
             // Show loader
             document.getElementById('loader').style.display = 'block';
-            document.getElementById('timeoutError').style.display = 'none';
             
             fetch('/generate_schedule', {
                 method: 'POST'
@@ -88,6 +87,7 @@
     <p id="status"></p>
     <pre id="result" class="results"></pre>
     <div id="loader" class="loader"></div>
+    <div id="timeoutError" style="display: none; color: red;"></div>
     {% if error %}
     <div class="alert alert-danger" role="alert">
         {{ error }}
