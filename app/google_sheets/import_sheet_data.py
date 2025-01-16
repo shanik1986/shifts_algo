@@ -1,10 +1,7 @@
 import pandas as pd
 from app.google_sheets.init_sheet_access import get_google_sheet_data
+from app.scheduler.constants import DAYS, SHIFTS
 import sys
-
-# Define days and shifts
-DAYS = ["Last Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-SHIFTS = ["Morning", "Noon", "Evening", "Night"]
 
 # Parse the dataset into a structured format
 def parse_shift_constraints(df):

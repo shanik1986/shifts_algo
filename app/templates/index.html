@@ -24,6 +24,10 @@
         }
     </style>
     <script>
+        // Get the constants from the backend
+        const dayOrder = JSON.parse('{{ DAYS|tojson|safe }}');
+        const shiftOrder = JSON.parse('{{ SHIFTS|tojson|safe }}');
+
         function generateSchedule() {
             document.getElementById('status').textContent = 'Processing...';
             document.getElementById('result').textContent = '';
@@ -32,13 +36,6 @@
             document.getElementById('loader').style.display = 'block';
             document.getElementById('timeoutError').style.display = 'none';
             
-            // Define the order of days and shifts
-            const dayOrder = [
-                "Last Saturday", "Sunday", "Monday", "Tuesday", 
-                "Wednesday", "Thursday", "Friday", "Saturday"
-            ];
-            const shiftOrder = ["Morning", "Noon", "Evening", "Night"];
-
             fetch('/generate_schedule', {
                 method: 'POST'
             })

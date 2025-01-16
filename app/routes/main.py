@@ -1,13 +1,14 @@
 from flask import Blueprint, render_template, jsonify
 from app.google_sheets.import_sheet_data import get_fresh_data
 from app.scheduler.shifts_algo import run_shift_algorithm
+from app.scheduler.constants import DAYS, SHIFTS
 
 bp = Blueprint('main', __name__)
 TIMEOUT_SECONDS = 15
 
 @bp.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', DAYS=DAYS, SHIFTS=SHIFTS)
 
 @bp.route('/generate_schedule', methods=['POST'])
 def generate_schedule():
