@@ -106,16 +106,11 @@ def would_create_double_shift(person, day, shift, current_assignments):
     return is_previous_assigned or is_next_assigned
 
 def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, 
-                    current_assignments, max_depth=10000, depth=0, 
-                    should_continue=lambda: True, iteration_counter=0):
+                    current_assignments, max_depth=10000, depth=0):
     """
     Assign people to shifts using backtracking to ensure all constraints are satisfied.
     Returns: (bool, str) - (success, reason for failure if any)
     """
-    # Check for cancellation every 100 iterations
-    if iteration_counter % 100 == 0 and not should_continue():
-        return False, "Request cancelled"
-
     if not remaining_shifts:
         return True, "success"
 
@@ -228,9 +223,7 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts,
         if validate_remaining_shifts(ranked_shifts, people, shift_counts, night_counts, current_assignments):
             result, reason = backtrack_assign(
                 ranked_shifts, people, shift_counts, night_counts, 
-                current_assignments, max_depth=max_depth, depth=depth + 1,
-                should_continue=should_continue,
-                iteration_counter=iteration_counter  # Pass the counter
+                current_assignments, max_depth=max_depth, depth=depth + 1
             )
             
             if result:
@@ -284,12 +277,6 @@ def run_shift_algorithm(shift_requirements=None, shift_constraints=None):
     """
     Run the algorithm with either passed data or fetch from Google Sheets
     """
-    def should_continue():
-        """Check if we should continue processing"""
-        if has_request_context():
-            return getattr(g, 'request_active', True)
-        return True  # Continue if not in request context (e.g., running locally)
-
     # If no data passed, get fresh data from import_sheet_data
     if shift_requirements is None or shift_constraints is None:
         shift_constraints, shift_requirements = get_fresh_data()
@@ -329,7 +316,7 @@ def run_shift_algorithm(shift_requirements=None, shift_constraints=None):
     # Sort shifts based on constraint level
     remaining_shifts = rank_shifts(remaining_shifts, shift_counts, people, night_counts, current_assignments)
     
-    # Run the backtracking assignment with cancellation check
+    # Run the backtracking assignment
     max_depth = 10000
     success, reason = backtrack_assign(
         remaining_shifts, 
@@ -337,8 +324,7 @@ def run_shift_algorithm(shift_requirements=None, shift_constraints=None):
         shift_counts, 
         night_counts, 
         current_assignments, 
-        max_depth=max_depth,
-        should_continue=should_continue  # Pass the check function
+        max_depth=max_depth
     )
     
     return success, current_assignments, reason, shift_counts, people
