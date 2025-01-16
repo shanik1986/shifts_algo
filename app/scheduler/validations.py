@@ -12,13 +12,14 @@ Constraints:
 
 """
 from app.scheduler.constants import DAYS, SHIFTS
-
+from app.scheduler.person import Person
 def debug_log(message, debug_mode = True):
     if debug_mode:
         print(message)
 
-def is_shift_blocked(day, shift, unavailable_shifts):
-    return (day,shift) in unavailable_shifts
+def is_shift_blocked(person, day, shift):
+    person = Person.from_dict(person) # Temp: Transform the dict to a Person object
+    return person.is_shift_blocked(day, shift)
 
 def is_max_shifts_reached(person, shift_counts):
     return shift_counts[person['name']] >= person['max_shifts']
@@ -70,7 +71,7 @@ def is_person_eligible_for_shift(person, day, shift, shift_counts, night_counts,
     previous_shift, next_shift = get_adjacent_shifts(shift)
 
     # Check basic constraints
-    if is_shift_blocked(day, shift, person["unavailable"]):
+    if is_shift_blocked(person, day, shift):
         debug_log(f"{person['name']} not eligible: Shift is unavailable", debug_mode)
         return False
     
