@@ -166,6 +166,24 @@ def test_night_before_noon_constraint(sample_person_with_constraints, sample_per
     assert sample_person_with_no_constraints.is_noon_after_night("Sunday", "Night", sample_current_assignments) == True
     assert sample_person_with_no_constraints.is_eligible_for_shift("Sunday", "Night", sample_current_assignments) == True
 
+def test_night_after_evening_constraint(sample_person_from_sheet, sample_current_assignments):
+    """Test night after evening constraint"""
+    # Assign evening shift
+    sample_person_from_sheet.assign_to_shift("Sunday", "Evening", sample_current_assignments)
+    
+    # Should not be eligible for night shift same day
+    assert sample_person_from_sheet.is_night_after_evening("Sunday", "Night", sample_current_assignments) == True
+    assert sample_person_from_sheet.is_eligible_for_shift("Sunday", "Night", sample_current_assignments) == False
+
+def test_evening_before_night_constraint(sample_person_from_sheet, sample_current_assignments):
+    """Test evening before night constraint"""
+    # Assign night shift
+    sample_person_from_sheet.assign_to_shift("Sunday", "Night", sample_current_assignments)
+    
+    # Should not be eligible for evening shift same day
+    assert sample_person_from_sheet.is_evening_before_night("Sunday", "Evening", sample_current_assignments) == True
+    assert sample_person_from_sheet.is_eligible_for_shift("Sunday", "Evening", sample_current_assignments) == False
+
 def test_consecutive_shifts_constraint(sample_person_with_constraints, sample_person_with_no_constraints, sample_current_assignments):
     """Test consecutive shifts constraint for person with constraints and for person with no constraints"""
     # Assert that both people are eligible for all shifts and that no shift triggers the consecutive shift constraint
@@ -229,6 +247,7 @@ def test_consecutive_shifts_constraint(sample_person_with_constraints, sample_pe
         assert sample_person_with_no_constraints.is_consequtive_shift(day, "Noon", sample_current_assignments) == True
         assert sample_person_with_no_constraints.is_eligible_for_shift(day, "Noon", sample_current_assignments) == True
 
+
     
 
 # def test_three_shifts_constraint(sample_person_from_sheet, sample_current_assignments):
@@ -241,14 +260,6 @@ def test_consecutive_shifts_constraint(sample_person_with_constraints, sample_pe
 #     assert sample_person_from_sheet.is_third_shift("Sunday", sample_current_assignments) == True
 #     assert sample_person_from_sheet.is_eligible_for_shift("Sunday", "Noon", sample_current_assignments) == False
 
-# def test_night_after_evening_constraint(sample_person_from_sheet, sample_current_assignments):
-#     """Test night after evening constraint"""
-#     # Assign evening shift
-#     sample_person_from_sheet.assign_to_shift("Sunday", "Evening", sample_current_assignments)
-    
-#     # Should not be eligible for night shift same day
-#     assert sample_person_from_sheet.is_night_after_evening("Sunday", "Night", sample_current_assignments) == True
-#     assert sample_person_from_sheet.is_eligible_for_shift("Sunday", "Night", sample_current_assignments) == False
 
 # def test_calculate_constraint_score(sample_person_from_sheet, sample_current_assignments):
 #     """Test constraint score calculation"""
