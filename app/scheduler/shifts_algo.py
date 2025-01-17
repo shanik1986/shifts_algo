@@ -1,19 +1,19 @@
-import sys
 import os
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
-import threading
+import sys
 
 # Add project root to Python path
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(project_root)
 
-# Now we can import from app
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
+import threading
 from itertools import combinations
-from app.scheduler.validations import get_eligible_people, is_person_eligible_for_shift, is_shift_assigned, get_adjacent_shifts
-from app.scheduler.constants import DAYS, SHIFTS
-from flask import jsonify, g, has_request_context
-from app.google_sheets.import_sheet_data import get_fresh_data
 import copy
+from app.scheduler.person import Person
+from app.scheduler.validations import get_eligible_people
+from app.scheduler.utils import debug_log
+from app.scheduler.constants import DAYS, SHIFTS
+from app.google_sheets.import_sheet_data import get_fresh_data
 
 debug_mode = True
 def debug_log(message):
@@ -21,15 +21,14 @@ def debug_log(message):
         print(message)
 
 
-def rank_shifts(remaining_shifts, shift_counts, people, night_counts, current_assignments):
+def rank_shifts(remaining_shifts, people, current_assignments):
     """
     Rank shifts by their constraint level: available people / remaining needed.
     Log the ranking process for debugging.
     """
     rankings = []
     for i, (day, shift, needed) in enumerate(remaining_shifts):
-        debug_log(f"[rank_shifts]")
-        available_people = get_eligible_people(day, shift, people, shift_counts, night_counts, current_assignments, debug_mode=False)
+        available_people = get_eligible_people(day, shift, people, current_assignments)
         if available_people:
             constraint_score = len(available_people) / needed
         else:
@@ -51,12 +50,10 @@ def rank_shifts(remaining_shifts, shift_counts, people, night_counts, current_as
     return sorted_rankings
 
 
-def validate_remaining_shifts(remaining_shifts, people, shift_counts, night_counts, current_assignments):
-    """
-    Validate that all remaining shifts have enough eligible people to fill them.
-    """
+def validate_remaining_shifts(remaining_shifts, people, current_assignments):
+    """Validate remaining shifts have enough eligible people"""
     for i, (day, shift, needed) in enumerate(remaining_shifts):
-        eligible_people = get_eligible_people(day, shift, people, shift_counts, night_counts, current_assignments, debug_mode=False)
+        eligible_people = get_eligible_people(day, shift, people, current_assignments)
         if len(eligible_people) < needed:
             print(f"Validation failed: {day} {shift} needs {needed} people, "
                     f"but only {len(eligible_people)} are available.")
@@ -69,46 +66,12 @@ def get_previous_day(days, day):
     return days[index - 1] if index > 0 else None
 
 
-def calculate_person_constraint(person, remaining_shifts, shift_counts, night_counts, current_assignments):
-    """
-    Calculate the constraint score for a person based on the number of shifts
-    they are actually eligible for compared to their remaining shift capacity.
-    
-    Returns:
-        float: Score representing how constrained this person is. 
-        Lower score = more constrained (fewer available shifts relative to remaining capacity)
-    """
-    # Calculate remaining shifts capacity for this person
-    remaining_capacity = person["max_shifts"] - shift_counts[person["name"]]
-    if remaining_capacity <= 0:
-        return float("inf")  # Person has no remaining capacity
-        
-    # Count shifts the person is actually eligible for
-    eligible_shift_count = 0
-    for day, shift, needed in remaining_shifts:
-        if is_person_eligible_for_shift(
-            person, day, shift,
-            shift_counts, night_counts, current_assignments
-        ):
-            eligible_shift_count += 1
-            
-    return eligible_shift_count / remaining_capacity if remaining_capacity > 0 else float("inf")
+def calculate_person_constraint(person, remaining_shifts, current_assignments):
+    """Calculate constraint score for a person"""
+    return person.calculate_constraint_score(remaining_shifts, current_assignments)
     
 
-def would_create_double_shift(person, day, shift, current_assignments):
-    """
-    Check if assigning this person to this shift would create a double shift
-    """
-    previous_shift, next_shift = get_adjacent_shifts(shift)
-    
-    # Check if person is assigned to adjacent shifts
-    is_previous_assigned = previous_shift and is_shift_assigned(person, day, previous_shift, current_assignments)
-    is_next_assigned = next_shift and is_shift_assigned(person, day, next_shift, current_assignments)
-    
-    return is_previous_assigned or is_next_assigned
-
-def backtrack_assign(remaining_shifts, people, shift_counts, night_counts, 
-                    current_assignments, max_depth=10000, depth=0, cancel_event=None):
+def backtrack_assign(remaining_shifts, people, current_assignments, max_depth=10000, depth=0, cancel_event=None):
     """
     Assign people to shifts using backtracking to ensure all constraints are satisfied.
     Returns: (bool, str) - (success, reason for failure if any)
@@ -125,9 +88,9 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts,
     debug_log(f"\nDepth {depth}: Trying to assign {day} {shift}")
     
     # Get eligible people for this shift
-    eligible_people = get_eligible_people(day, shift, people, shift_counts, night_counts, current_assignments)
+    eligible_people = get_eligible_people(day, shift, people, current_assignments)
     print(f"\n=== {day} {shift}: Trying to assign {needed} people ===")
-    print(f"Eligible people: {[p['name'] for p in eligible_people]}")
+    print(f"Eligible people: {[p.name for p in eligible_people]}")
 
     # If not enough people are available, backtrack
     if len(eligible_people) < needed:
@@ -140,11 +103,8 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts,
 
     # Compute constraint scores for each eligible person
     person_scores = {
-        p["name"]: calculate_person_constraint(
-            p, 
+        p.name: p.calculate_constraint_score(
             remaining_shifts, 
-            shift_counts, 
-            night_counts, 
             current_assignments
         ) for p in eligible_people
     }
@@ -153,7 +113,7 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts,
     combo_scores = []
     for combo in all_combos:
         # Calculate regular constraint score
-        constraint_score = sum(person_scores[p["name"]] for p in combo)
+        constraint_score = sum(person.constraints_score for person in combo)
         combo_scores.append((constraint_score, list(combo)))
 
     # Sort combinations by their constraint score (lowest score first)
@@ -162,7 +122,7 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts,
     # Count double shift opportunities in each combo
     def count_double_shifts(combo, day, shift, current_assignments):
         return sum(1 for person in combo 
-                  if person["double_shift"] and would_create_double_shift(person, day, shift, current_assignments))
+                  if person.double_shift and person.is_consequtive_shift(day, shift, current_assignments))
 
     # A list of target name pairs to check for in combos and prioritize
     target_names = [
@@ -176,7 +136,7 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts,
     
     # The function returns True if the tested combo has any of the target name pairs
     def has_both_target_names(combo, target_names_list):
-        names_in_combo = {p["name"] for p in combo}
+        names_in_combo = {p.name for p in combo}
         return any(len(names_in_combo & target_pair) == 2 for target_pair in target_names_list)
 
     # Sort combinations with priority: both target names first, then double shifts, then constraint score
@@ -188,26 +148,22 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts,
                          ))
 
     tested_combos = []
-    remaining_combos = [[p["name"] for p in combo] for _, combo in combo_scores]
+    remaining_combos = [[p.name for p in combo] for _, combo in combo_scores]
     # Try all combinations of eligible people for this shift
     for combo_score, combo in combo_scores:
         debug_log(f"================================================")
         debug_log(f"{len(remaining_combos)} Remaining combos: {remaining_combos}")
         debug_log(f"{len(tested_combos)} Tested combos: {tested_combos}")
-        debug_log(f"Trying combination: {[p['name'] for p in combo]} for {day} {shift}")
+        debug_log(f"Trying combination: {[p.name for p in combo]} for {day} {shift}")
         debug_log(f"================================================")
 
-        tested_combos.append([p["name"] for p in combo])
-        remaining_combos.remove([p["name"] for p in combo])
+        tested_combos.append([p.name for p in combo])
+        remaining_combos.remove([p.name for p in combo])
         
         # Make the assignment
-        # current_assignments[day][shift] = list(combo)
         for p in combo:
-            current_assignments[day][shift].append(p["name"])
-            shift_counts[p["name"]] += 1
-            if shift == "Night":
-                night_counts[p["name"]] += 1
-
+            p.assign_to_shift(day, shift, current_assignments)
+            
         remaining_shifts.pop(0)
         debug_log(f"Removing {day} {shift} from remaining shifts")
         debug_log(f"  Remaining shifts: {remaining_shifts}")
@@ -216,20 +172,18 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts,
         # Log the current state after assignment
         debug_log(f"\nState after assigning {day} {shift}:")
         debug_log(f"======================================\n")
-        debug_log(f"  Shift counts: {shift_counts}\n")
-        debug_log(f"  Night counts: {night_counts}\n")
-        # debug_log(f"  Current assignments: {current_assignments}\n")
-        # remaining_shifts = rank_shifts(remaining_shifts, shift_counts, people)
+        debug_log(f"  Current assignments: {current_assignments}\n")
+        debug_log(f"  People's shift counts: {[(p.name, p.shift_counts) for p in people]}\n")
+        debug_log(f"  People's night counts: {[(p.name, p.night_counts) for p in people]}\n")
 
         #Checking that all the shifts have available people after the lastest assignment
         debug_log(f"\nValidating all shifts after assigning {current_assignments[day][shift]} for {day} {shift}:")
         debug_log(f"======================================================================")
         
-        ranked_shifts = copy.deepcopy(rank_shifts(remaining_shifts, shift_counts, people, night_counts, current_assignments))
-        if validate_remaining_shifts(ranked_shifts, people, shift_counts, night_counts, current_assignments):
+        ranked_shifts = copy.deepcopy(rank_shifts(remaining_shifts, people, current_assignments))
+        if validate_remaining_shifts(ranked_shifts, people, current_assignments):
             result, reason = backtrack_assign(
-                ranked_shifts, people, shift_counts, night_counts, 
-                current_assignments, max_depth=max_depth, depth=depth + 1, cancel_event=cancel_event
+                ranked_shifts, people, current_assignments, max_depth=max_depth, depth=depth + 1, cancel_event=cancel_event
             )
             
             if result:
@@ -238,10 +192,7 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts,
                 # Undo the assignment before returning False
             else:
                 for person in combo:
-                    shift_counts[person["name"]] -= 1
-                    if shift == "Night":
-                        night_counts[person["name"]] -= 1
-                current_assignments[day][shift] = []
+                    person.unassign_from_shift(day, shift, current_assignments)
                 remaining_shifts = copy.deepcopy(original_shifts)
                 # return False, f"Recursive call returned {result}"
             
@@ -251,10 +202,8 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts,
 
         # Undo the assignment (backtrack)
             for person in combo:
-                shift_counts[person["name"]] -= 1
-                if shift == "Night":
-                    night_counts[person["name"]] -= 1
-            current_assignments[day][shift] = []
+                person.unassign_from_shift(day, shift, current_assignments)
+
             remaining_shifts = copy.deepcopy(original_shifts)
             day, shift, needed = remaining_shifts[0]
 
@@ -263,9 +212,8 @@ def backtrack_assign(remaining_shifts, people, shift_counts, night_counts,
 
         debug_log(f"State after undoing {day} {shift}:")
         debug_log(f"  Remaining shifts: {remaining_shifts}")
-        debug_log(f"  Shift counts: {shift_counts}")
-        debug_log(f"  Night counts: {night_counts}")
-        # debug_log(f"  Current assignments: {current_assignments}")
+        debug_log(f"  People's shift counts: {[(p.name, p.shift_counts) for p in people]}")
+        debug_log(f"  People's night counts: {[(p.name, p.night_counts) for p in people]}")
         
     debug_log(f"No valid combination found for {day} {shift}. Backtracking...")
     debug_log("=============================================================================")
@@ -289,15 +237,14 @@ def run_shift_algorithm(shift_requirements=None, shift_constraints=None, timeout
         if shift_requirements is None or shift_constraints is None:
             shift_constraints, shift_requirements = get_fresh_data()
 
-        people = shift_constraints
+        # Convert people from dicts to Person objects
+        people = [Person.from_dict(p) for p in shift_constraints]
         remaining_shifts = []
         
         for day, shifts in shift_requirements.items():
             for shift, needed in shifts.items():
                 if needed > 0:
                     remaining_shifts.append((day, shift, needed))
-
-
 
         # Calculate max combinations for any shift
         max_combinations = 0
@@ -309,28 +256,24 @@ def run_shift_algorithm(shift_requirements=None, shift_constraints=None, timeout
 
         print(f"Maximum combinations ({max_combinations}) occurs for shift: {max_shift}")
 
-
-
-        # Prepare initial assignments and counts
+        # Prepare initial assignments
         current_assignments = {day: {shift: [] for shift in SHIFTS} for day in DAYS}
-        shift_counts = {p["name"]: 0 for p in people}
-        night_counts = {p["name"]: 0 for p in people}
         
         # Sort shifts based on constraint level
-        remaining_shifts = rank_shifts(remaining_shifts, shift_counts, people, night_counts, current_assignments)
+        remaining_shifts = rank_shifts(remaining_shifts, people, current_assignments)
         
         # Run the backtracking assignment
         max_depth = 10000
         success, reason = backtrack_assign(
             remaining_shifts, 
-            people, 
-            shift_counts, 
-            night_counts, 
+            people,
             current_assignments,
             max_depth=max_depth,
             cancel_event=cancel_event
         )
         
+        # Get shift counts from Person objects for display
+        shift_counts = {p.name: p.shift_counts for p in people}
         return success, current_assignments, reason, shift_counts, people
 
     with ThreadPoolExecutor() as executor:
@@ -357,7 +300,7 @@ if __name__ == '__main__':
         
         print("\n=== Shifts Assigned Per Person ===")
         for person in people:
-            print(f"{person['name']}: {shift_counts[person['name']]} shifts")
+            print(f"{person.name}: {person.shift_counts} shifts")
             
     else:
         print(f"\nNo solution found: {reason}")

@@ -36,7 +36,9 @@ def parse_shift_constraints(df):
             max_shifts=int(row["Max Shifts"]),
             max_nights=int(row["Max Nights"]),
             are_three_shifts_possible=row["3 Shift Days?"],
-            night_and_noon_possible=row["Night + Noon"]
+            night_and_noon_possible=row["Night + Noon"],
+            shift_counts=0,  # Initialize to 0
+            night_counts=0   # Initialize to 0
         )
         
         # Temporarily convert back to dict to maintain compatibility

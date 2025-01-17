@@ -13,19 +13,19 @@ Constraints:
 """
 from app.scheduler.constants import DAYS, SHIFTS
 from app.scheduler.person import Person
-def debug_log(message, debug_mode = True):
-    if debug_mode:
-        print(message)
+from app.scheduler.utils import debug_log, get_adjacent_days, get_adjacent_shifts
 
-def is_shift_blocked(person, day, shift):
-    person = Person.from_dict(person) # Temp: Transform the dict to a Person object
+def is_shift_blocked(person, day, shift): # Temp: Using this helper function until I completeley migrate to Person objects
+    person = Person.from_dict(person) 
     return person.is_shift_blocked(day, shift)
 
-def is_max_shifts_reached(person, shift_counts):
-    return shift_counts[person['name']] >= person['max_shifts']
+def is_max_shifts_reached(person, shift_counts): # Temp: Using this helper function until I completeley migrate to Person objects
+    person = Person.from_dict(person)  
+    return person.is_max_shifts_reached(shift_counts)
 
 def is_shift_assigned(person, tested_day, tested_shift, current_assignments):
-    return person['name'] in current_assignments[tested_day][tested_shift]
+    person = Person.from_dict(person) # Temp: Using this helper function until I completeley migrate to Person objects
+    return person.name in current_assignments[tested_day][tested_shift]
 
 def is_third_shift(person, day, current_assignments):
     # debug_log(f"Checking if this is the third shift for {person}")
@@ -41,25 +41,20 @@ def is_third_shift(person, day, current_assignments):
 # def print_unavailable_reason(message):
 
 
-def get_eligible_people(day, shift, people, shift_counts, night_counts, current_assignments, debug_mode = True):
-    """
-    Returns a list of eligible people for a specific day and shift.
-    """
+def get_eligible_people(day, shift, people, current_assignments, debug_mode = True):
+    """Returns a list of eligible people for a specific day and shift."""
     debug_log(f"\nGetting available people for {day} {shift}", debug_mode)
     debug_log("================================================", debug_mode)
 
     eligible_people = []
-    
     for person in people:
-        debug_log(f"\nChecking {person['name']}'s availability...", debug_mode)
+        debug_log(f"\nChecking {person.name}'s availability...", debug_mode)
         
-        if is_person_eligible_for_shift(person, day, shift, shift_counts, night_counts, current_assignments):
-            debug_log(f"{person['name']} is eligible for {day} {shift}", debug_mode)
+        if person.is_eligible_for_shift(day, shift, current_assignments):
+            debug_log(f"{person.name} is eligible for {day} {shift}", debug_mode)
             eligible_people.append(person)
-        # else:
-        #     debug_log(f"{person['name']} not eligible for {day} {shift}", debug_mode)
     
-    debug_log(f"\nEligible people for {day} {shift}: {[p['name'] for p in eligible_people]}")
+    debug_log(f"\nEligible people for {day} {shift}: {[p.name for p in eligible_people]}")
     return eligible_people
             
 def is_person_eligible_for_shift(person, day, shift, shift_counts, night_counts, current_assignments, debug_mode=True):
