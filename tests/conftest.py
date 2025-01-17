@@ -84,7 +84,7 @@ def sample_person_with_constraints():
         name="Constrainned Person",
         unavailable=[],
         double_shift=False,
-        max_shifts=3,
+        max_shifts=10,
         max_nights=1,
         are_three_shifts_possible=False,
         night_and_noon_possible=False
@@ -103,7 +103,7 @@ def sample_person_with_no_constraints():
         name="No Constraints Person",
         unavailable=[],
         double_shift=True,
-        max_shifts=3,
+        max_shifts=10,
         max_nights=2,
         are_three_shifts_possible=True,
         night_and_noon_possible=True
