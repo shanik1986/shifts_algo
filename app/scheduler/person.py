@@ -155,44 +155,55 @@ class Person:
 
     def is_eligible_for_shift(self, day: str, shift: str, current_assignments: dict) -> bool:
         """Determine if person is eligible for a given shift based on all constraints"""
+        base_msg = f"Checking {self.name} availability for {day} {shift}: "
 
         # Check if this would exceed weekend shift limit
         if is_weekend_shift(day, shift) and self.weekend_shifts >= self.max_weekend_shifts:
+            debug_log(base_msg + "Not available - Weekend shift limit reached")
             return False
             
         # Check if the shift is unavailable
         if self.is_shift_blocked(day, shift):
+            debug_log(base_msg + "Not available - Shift is blocked")
             return False
         
         # Check if the person reached his max shifts
         if self.is_max_shifts_reached():
+            debug_log(base_msg + "Not available - Maximum shifts reached")
             return False
             
         # Check if the person reached his max nights
         if self.is_max_nights_reached() and shift == "Night":
+            debug_log(base_msg + "Not available - Maximum night shifts reached")
             return False
         
-        #Check if this will be the morning shift after a night shift or night shift before a morning shift
+        # Check if this will be the morning shift after a night shift or night shift before a morning shift
         if self.is_morning_after_night(day, shift, current_assignments):
+            debug_log(base_msg + "Not available - Morning after night/Night before morning conflict")
             return False
         
-        #Check Nightt before Noon constraint
+        # Check Night before Noon constraint
         if not(self.night_and_noon_possible) and self.is_noon_after_night(day, shift, current_assignments):
+            debug_log(base_msg + "Not available - Night and noon conflict")
             return False
 
-        # Check if this is a consequtive shift and the person is not allowed to have double shifts
+        # Check if this is a consecutive shift and the person is not allowed to have double shifts
         if not(self.double_shift) and self.is_consequtive_shift(day, shift, current_assignments):
+            debug_log(base_msg + "Not available - Consecutive shift not allowed")
             return False        
         
         # Check if this is the third shift of the day and the person is not allowed to have three shifts
         if self.is_third_shift(day, current_assignments):
             if not(self.are_three_shifts_possible) or shift == "Evening" or self.is_shift_assigned(day, "Evening", current_assignments):
+                debug_log(base_msg + "Not available - Third shift not allowed")
                 return False
         
         # Check if this is the night shift after an evening shift
         if (shift == "Night" or shift == "Evening") and self.is_night_after_evening(day, shift, current_assignments):
+            debug_log(base_msg + "Not available - Night after evening/Evening before night conflict")
             return False
 
+        debug_log(base_msg + "Available - All constraints passed")
         return True
     
     def calculate_constraint_score(self, remaining_shifts: List[Tuple[str, str, int]], 
