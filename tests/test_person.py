@@ -249,39 +249,222 @@ def test_consecutive_shifts_constraint(sample_person_with_constraints, sample_pe
 
 
     
+def test_three_shifts_constraint(sample_person_with_constraints, sample_person_with_no_constraints, sample_current_assignments):
+    """Test three shifts constraint"""
 
-# def test_three_shifts_constraint(sample_person_from_sheet, sample_current_assignments):
-#     """Test three shifts constraint"""
-#     # Assign two shifts
-#     sample_person_from_sheet.assign_to_shift("Sunday", "Morning", sample_current_assignments)
-#     sample_person_from_sheet.assign_to_shift("Sunday", "Night", sample_current_assignments)
+    # Assert that person is eligible to all shifts on Monday and that none of them trigger the three shifts constraint
+    for shift in SHIFTS:
+        assert sample_person_with_constraints.is_eligible_for_shift("Monday", shift, sample_current_assignments) == True
+        assert sample_person_with_constraints.is_third_shift("Monday", sample_current_assignments) == False
+
+        assert sample_person_with_no_constraints.is_eligible_for_shift("Monday", shift, sample_current_assignments) == True
+        assert sample_person_with_no_constraints.is_third_shift("Monday", sample_current_assignments) == False
     
-#     # Should not be eligible for third shift if three_shifts_possible is False
-#     assert sample_person_from_sheet.is_third_shift("Sunday", sample_current_assignments) == True
-#     assert sample_person_from_sheet.is_eligible_for_shift("Sunday", "Noon", sample_current_assignments) == False
+    """
+    Morning + Noon are assigned: Testing evening and night shift
+    """
+    # Assign morning and noon shifts
+    sample_person_with_constraints.assign_to_shift("Monday", "Morning", sample_current_assignments)
+    sample_person_with_constraints.assign_to_shift("Monday", "Noon", sample_current_assignments)
+    sample_person_with_no_constraints.assign_to_shift("Monday", "Morning", sample_current_assignments)
+    sample_person_with_no_constraints.assign_to_shift("Monday", "Noon", sample_current_assignments)
+    
+    # Assert that person with constraints is not eligible for evening and night shifts
+    assert sample_person_with_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_constraints.is_eligible_for_shift("Monday", "Evening", sample_current_assignments) == False
+    assert sample_person_with_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_constraints.is_eligible_for_shift("Monday", "Night", sample_current_assignments) == False
+    
+    # Assert that person with no constraints is eligible for night shift but not eligible for evening shift becuase he can't do 3 shifts in a row
+    assert sample_person_with_no_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_no_constraints.is_eligible_for_shift("Monday", "Evening", sample_current_assignments) == False
+    assert sample_person_with_no_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_no_constraints.is_eligible_for_shift("Monday", "Night", sample_current_assignments) == True
+
+    # Unassign noon shift
+    sample_person_with_constraints.unassign_from_shift("Monday", "Noon", sample_current_assignments)
+    sample_person_with_no_constraints.unassign_from_shift("Monday", "Noon", sample_current_assignments)
+
+    """
+    Morning + Evening are assigned: Testing noon and night shift
+    """
+    # Assign evening shift
+    sample_person_with_constraints.assign_to_shift("Monday", "Evening", sample_current_assignments)
+    sample_person_with_no_constraints.assign_to_shift("Monday", "Evening", sample_current_assignments)
+    
+    # Assert that person with constraints is not eligible for noon and night shifts
+    assert sample_person_with_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_constraints.is_eligible_for_shift("Monday", "Noon", sample_current_assignments) == False
+    assert sample_person_with_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_constraints.is_eligible_for_shift("Monday", "Night", sample_current_assignments) == False
+
+    # Assert that person with no constraints is not eligible for noon and night shifts because he can't do evening and night in a row
+    assert sample_person_with_no_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_no_constraints.is_eligible_for_shift("Monday", "Noon", sample_current_assignments) == False
+    assert sample_person_with_no_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_no_constraints.is_eligible_for_shift("Monday", "Night", sample_current_assignments) == False
+
+    # Unassign evening shift
+    sample_person_with_constraints.unassign_from_shift("Monday", "Evening", sample_current_assignments)
+    sample_person_with_no_constraints.unassign_from_shift("Monday", "Evening", sample_current_assignments)
+
+    """
+    Morning + Night are assigned: Testing evening and noon shift
+    """ 
+
+    # Assign night shift
+    sample_person_with_constraints.assign_to_shift("Monday", "Night", sample_current_assignments)
+    sample_person_with_no_constraints.assign_to_shift("Monday", "Night", sample_current_assignments)
+    
+    # Assert that person with constraints is not eligible for evening and night shift
+    assert sample_person_with_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_constraints.is_eligible_for_shift("Monday", "Evening", sample_current_assignments) == False
+    assert sample_person_with_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_constraints.is_eligible_for_shift("Monday", "Night", sample_current_assignments) == False
+
+    # Assert that person with no constraints is not eligible for evening shift but eligible for night shift
+    assert sample_person_with_no_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_no_constraints.is_eligible_for_shift("Monday", "Evening", sample_current_assignments) == False
+    assert sample_person_with_no_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_no_constraints.is_eligible_for_shift("Monday", "Night", sample_current_assignments) == True
+    
+    # Unassign morning and night shift
+    sample_person_with_constraints.unassign_from_shift("Monday", "Morning", sample_current_assignments)
+    sample_person_with_constraints.unassign_from_shift("Monday", "Night", sample_current_assignments)
+    sample_person_with_no_constraints.unassign_from_shift("Monday", "Morning", sample_current_assignments)
+    sample_person_with_no_constraints.unassign_from_shift("Monday", "Night", sample_current_assignments)
+
+    """
+    Noon + Evening are assigned: Testing morning and night shift
+    """
+
+    # Assign noon and evening shift
+    sample_person_with_constraints.assign_to_shift("Monday", "Noon", sample_current_assignments)
+    sample_person_with_constraints.assign_to_shift("Monday", "Evening", sample_current_assignments)
+    sample_person_with_no_constraints.assign_to_shift("Monday", "Noon", sample_current_assignments)
+    sample_person_with_no_constraints.assign_to_shift("Monday", "Evening", sample_current_assignments)
+
+    # Assert that person with constraints is not eligible for morning and night shift
+    assert sample_person_with_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_constraints.is_eligible_for_shift("Monday", "Morning", sample_current_assignments) == False
+    assert sample_person_with_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_constraints.is_eligible_for_shift("Monday", "Night", sample_current_assignments) == False
+
+    # Assert that person with no constraints is not eligible for morning and night shift
+    assert sample_person_with_no_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_no_constraints.is_eligible_for_shift("Monday", "Morning", sample_current_assignments) == False
+    assert sample_person_with_no_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_no_constraints.is_eligible_for_shift("Monday", "Night", sample_current_assignments) == False
+
+    # Unassign evening shift
+    sample_person_with_constraints.unassign_from_shift("Monday", "Evening", sample_current_assignments)
+    sample_person_with_no_constraints.unassign_from_shift("Monday", "Evening", sample_current_assignments)
+
+    """
+    Noon + Night are assigned: Testing morning and evening shift
+    """
+
+    # Assign night shift
+    sample_person_with_constraints.assign_to_shift("Monday", "Night", sample_current_assignments)
+    sample_person_with_no_constraints.assign_to_shift("Monday", "Night", sample_current_assignments)
+
+    # Assert that person with constraints is not eligible for morning and evening shift
+    assert sample_person_with_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_constraints.is_eligible_for_shift("Monday", "Morning", sample_current_assignments) == False
+    assert sample_person_with_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_constraints.is_eligible_for_shift("Monday", "Evening", sample_current_assignments) == False
+
+    # Assert that person with no constraints is eligible for morning but not eligible for evening shift
+    assert sample_person_with_no_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_no_constraints.is_eligible_for_shift("Monday", "Morning", sample_current_assignments) == True
+    assert sample_person_with_no_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_no_constraints.is_eligible_for_shift("Monday", "Evening", sample_current_assignments) == False
+    
+    # Unassign Noon shift
+    sample_person_with_constraints.unassign_from_shift("Monday", "Noon", sample_current_assignments)
+    sample_person_with_no_constraints.unassign_from_shift("Monday", "Noon", sample_current_assignments)
+
+    """
+    Evening + Night are assigned: Testing morning and noon shift
+    """
+    
+    # Assign evening shift
+    sample_person_with_constraints.assign_to_shift("Monday", "Evening", sample_current_assignments)
+    sample_person_with_no_constraints.assign_to_shift("Monday", "Evening", sample_current_assignments)  
+    
+    # Assert that person with constraints is not eligible for morning and noon shift
+    assert sample_person_with_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_constraints.is_eligible_for_shift("Monday", "Morning", sample_current_assignments) == False
+    assert sample_person_with_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_constraints.is_eligible_for_shift("Monday", "Noon", sample_current_assignments) == False
+    
+    # Assert that person with no constraints is not eligible for morning and noon shift
+    assert sample_person_with_no_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_no_constraints.is_eligible_for_shift("Monday", "Morning", sample_current_assignments) == False
+    assert sample_person_with_no_constraints.is_third_shift("Monday", sample_current_assignments) == True
+    assert sample_person_with_no_constraints.is_eligible_for_shift("Monday", "Noon", sample_current_assignments) == False
 
 
-# def test_calculate_constraint_score(sample_person_from_sheet, sample_current_assignments):
-#     """Test constraint score calculation"""
-#     remaining_shifts = [
-#         ("Sunday", "Morning", 2),
-#         ("Sunday", "Noon", 2),
-#         ("Sunday", "Evening", 2),
-#         ("Sunday", "Night", 2)
-#     ]
+
+
+def test_calculate_constraint_score(sample_person_from_sheet, sample_current_assignments):
+    """
+    Test constraint score calculation.
+    Sample person relevant attributes:
+        Max shifts: 5
+        Max nights: 2
+        Night + Noon possible: True
+        Double shift: False
+
+        Unavailable: [
+            ("Saturday", "Night"), 
+            ("Sunday", "Morning"), 
+            ("Monday", "Noon"), 
+            ("Tuesday", "Evening"), 
+            ("Wednesday", "Night"),
+            ("Thursday", "Morning"),
+            ("Friday", "Noon"),
+            ("Saturday", "Evening")
+        ]
+    """
+    #Assign to Sunday Night
+    sample_person_from_sheet.assign_to_shift("Sunday", "Night", sample_current_assignments)
     
-#     # Calculate initial constraint score
-#     initial_score = sample_person_from_sheet.calculate_constraint_score(
-#         remaining_shifts, sample_current_assignments)
+    # From the remaining shifts, the person is eligibile for Sunday Noon and Monday Evening
+    remaining_shifts = [
+        ("Sunday", "Morning", 2),
+        ("Sunday", "Noon", 2),
+        ("Sunday", "Evening", 2),
+        ("Monday", "Morning", 2),
+        ("Monday", "Evening", 2)
+    ]
+
+    # Calculate initial constraint score
+    assert sample_person_from_sheet.calculate_constraint_score(
+        remaining_shifts, sample_current_assignments) == 0.5
     
-#     # Assign some shifts to reduce availability
-#     sample_person_from_sheet.assign_to_shift("Sunday", "Morning", sample_current_assignments)
     
-#     # Calculate new constraint score
-#     new_score = sample_person_from_sheet.calculate_constraint_score(
-#         remaining_shifts, sample_current_assignments)
+    # Assign to Monday evening to reduce constraint score
+    sample_person_from_sheet.assign_to_shift("Monday", "Evening", sample_current_assignments)
+    remaining_shifts.remove(("Monday", "Evening", 2))
     
-#     # New score should be different from initial score
-#     assert new_score != initial_score
+    # Calculate new constraint score
+    assert sample_person_from_sheet.calculate_constraint_score(
+        remaining_shifts, sample_current_assignments) == (1/3)
+    
+    # Assign to Thursday morning, Saturday morning and Saturday night to make the person completely unavailable
+    sample_person_from_sheet.assign_to_shift("Saturday", "Morning", sample_current_assignments)
+    assert sample_person_from_sheet.calculate_constraint_score(
+        remaining_shifts, sample_current_assignments) == (1/2)
+    
+    sample_person_from_sheet.assign_to_shift("Saturday", "Night", sample_current_assignments)
+    assert sample_person_from_sheet.calculate_constraint_score(
+        remaining_shifts, sample_current_assignments) == (1)
+    
+    sample_person_from_sheet.assign_to_shift("Thursday", "Morning", sample_current_assignments)
+    assert sample_person_from_sheet.calculate_constraint_score(
+        remaining_shifts, sample_current_assignments) == float("inf")
+    
+
 
     
