@@ -402,6 +402,7 @@ def test_three_shifts_constraint(sample_person_with_constraints, sample_person_w
     assert sample_person_with_no_constraints.is_eligible_for_shift("Monday", "Noon", sample_current_assignments) == False
 
 def test_calculate_constraint_score(sample_person_from_sheet, sample_current_assignments):
+    
     """
     Test constraint score calculation.
     Sample person relevant attributes:
@@ -458,3 +459,30 @@ def test_calculate_constraint_score(sample_person_from_sheet, sample_current_ass
     sample_person_from_sheet.assign_to_shift("Thursday", "Morning", sample_current_assignments)
     assert sample_person_from_sheet.calculate_constraint_score(
         remaining_shifts, sample_current_assignments) == float("inf")
+    
+def test_weekend_shift_limitation():
+    person = Person(
+        name="Test Person",
+        unavailable=[],
+        double_shift=True,
+        max_shifts=10,
+        max_nights=5,
+        are_three_shifts_possible=True,
+        night_and_noon_possible=True
+    )
+    
+    assignments = {
+        "Friday": {"Morning": [], "Noon": [], "Evening": [], "Night": []},
+        "Saturday": {"Morning": [], "Noon": [], "Evening": [], "Night": []}
+    }
+    
+    # First weekend shift should be allowed
+    assert person.is_eligible_for_shift("Friday", "Evening", assignments) == True
+    person.assign_to_shift("Friday", "Evening", assignments)
+    
+    # Second weekend shift should not be allowed
+    assert person.is_eligible_for_shift("Saturday", "Morning", assignments) == False
+    
+    # Unassigning should make weekend shifts available again
+    person.unassign_from_shift("Friday", "Evening", assignments)
+    assert person.is_eligible_for_shift("Saturday", "Morning", assignments) == True 
