@@ -44,7 +44,6 @@ def test_shift_blocking(sample_person_from_sheet):
     assert sample_person_from_sheet.is_shift_blocked("Friday", "Morning") == False
     assert sample_person_from_sheet.is_shift_blocked("Saturday", "Noon") == False
 
-
 def test_person_conversion(sample_person_dict_from_sheet):
     """Test conversion between dictionary and Person object"""
     # Convert dict to Person
@@ -247,8 +246,6 @@ def test_consecutive_shifts_constraint(sample_person_with_constraints, sample_pe
         assert sample_person_with_no_constraints.is_consequtive_shift(day, "Noon", sample_current_assignments) == True
         assert sample_person_with_no_constraints.is_eligible_for_shift(day, "Noon", sample_current_assignments) == True
 
-
-    
 def test_three_shifts_constraint(sample_person_with_constraints, sample_person_with_no_constraints, sample_current_assignments):
     """Test three shifts constraint"""
 
@@ -404,9 +401,6 @@ def test_three_shifts_constraint(sample_person_with_constraints, sample_person_w
     assert sample_person_with_no_constraints.is_third_shift("Monday", sample_current_assignments) == True
     assert sample_person_with_no_constraints.is_eligible_for_shift("Monday", "Noon", sample_current_assignments) == False
 
-
-
-
 def test_calculate_constraint_score(sample_person_from_sheet, sample_current_assignments):
     """
     Test constraint score calculation.
@@ -464,7 +458,3 @@ def test_calculate_constraint_score(sample_person_from_sheet, sample_current_ass
     sample_person_from_sheet.assign_to_shift("Thursday", "Morning", sample_current_assignments)
     assert sample_person_from_sheet.calculate_constraint_score(
         remaining_shifts, sample_current_assignments) == float("inf")
-    
-
-
-    
