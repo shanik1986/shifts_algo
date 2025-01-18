@@ -1,4 +1,4 @@
-from app.scheduler.constants import DAYS, SHIFTS
+from app.scheduler.constants import DAYS, SHIFTS, WEEKEND_SHIFTS
 
 def get_adjacent_days(day):
     """Get the previous and next days for a given day."""
@@ -17,3 +17,7 @@ def get_adjacent_shifts(shift):
 def debug_log(message, debug_mode = True):
     if debug_mode:
         print(message) 
+
+def is_weekend_shift(day: str, shift: str) -> bool:
+    """Check if a given day and shift combination is a weekend shift"""
+    return (day, shift) in WEEKEND_SHIFTS 
