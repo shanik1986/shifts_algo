@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Tuple, Dict
-from app.scheduler.utils import get_adjacent_days, get_adjacent_shifts, is_weekend_shift
+from app.scheduler.utils import get_adjacent_days, get_adjacent_shifts, is_weekend_shift, debug_log
+
 
 @dataclass
 class Person:
