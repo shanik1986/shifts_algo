@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Tuple, Dict
-from app.scheduler.utils import get_adjacent_days, get_adjacent_shifts
+from app.scheduler.utils import get_adjacent_days, get_adjacent_shifts, is_weekend_shift
 
 @dataclass
 class Person:
@@ -12,8 +12,10 @@ class Person:
     max_nights: int
     are_three_shifts_possible: bool
     night_and_noon_possible: bool
-    shift_counts: int = 0 #Starts at 0
-    night_counts: int = 0 #Starts at 0
+    max_weekend_shifts: int = 1
+    shift_counts: int = 0
+    night_counts: int = 0
+    weekend_shifts: int = 0
     constraints_score: float = 0
     
 
@@ -30,8 +32,10 @@ class Person:
             max_nights=person_dict['max_nights'],
             are_three_shifts_possible=person_dict['are_three_shifts_possible'],
             night_and_noon_possible=person_dict['night_and_noon_possible'],
+            max_weekend_shifts=person_dict.get('max_weekend_shifts', 1),
             shift_counts=person_dict.get('shift_counts', 0),
-            night_counts=person_dict.get('night_counts', 0)
+            night_counts=person_dict.get('night_counts', 0),
+            weekend_shifts=person_dict.get('weekend_shifts', 0)
         )
 
     def assign_to_shift(self, day: str, shift: str, current_assignments: dict):
@@ -40,6 +44,8 @@ class Person:
         self.increment_shift_count()
         if shift == "Night":
             self.increment_night_count()
+        if is_weekend_shift(day, shift):
+            self.weekend_shifts += 1
     
     
     def unassign_from_shift(self, day: str, shift: str, current_assignments: dict):
@@ -48,6 +54,8 @@ class Person:
         self.decrement_shift_count()
         if shift == "Night":
             self.decrement_night_count()
+        if is_weekend_shift(day, shift):
+            self.weekend_shifts -= 1
     
     # Increment shift count
     def increment_shift_count(self):
@@ -148,6 +156,10 @@ class Person:
     def is_eligible_for_shift(self, day: str, shift: str, current_assignments: dict) -> bool:
         """Determine if person is eligible for a given shift based on all constraints"""
 
+        # Check if this would exceed weekend shift limit
+        if is_weekend_shift(day, shift) and self.weekend_shifts >= self.max_weekend_shifts:
+            return False
+            
         # Check if the shift is unavailable
         if self.is_shift_blocked(day, shift):
             return False
