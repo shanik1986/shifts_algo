@@ -2,6 +2,7 @@ from typing import Literal, get_args, Optional, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.scheduler.person import Person  # Only import for type checking
+    from app.scheduler.shift_group import ShiftGroup  # Move this inside TYPE_CHECKING
 
 # Define the allowed types using Python's Literal type
 DayType = Literal["Last Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
@@ -12,46 +13,57 @@ VALID_DAYS = get_args(DayType)
 VALID_SHIFT_TIMES = get_args(ShiftTimeType)
 
 class Shift:
-    # Initialize empty class variables
-    ALL_SHIFTS: List['Shift'] = []
-    WEEKEND_SHIFTS: List['Shift'] = []
-    WEEKDAY_SHIFTS: List['Shift'] = []
+    def __new__(cls, shift_day: DayType, shift_time: ShiftTimeType, group: 'ShiftGroup', needed: int = 0):
+        # First check if shift exists in group
+        existing_shift = group.get_shift(shift_day, shift_time)
+        if existing_shift:
+            return existing_shift  # Return existing instance
 
-    def __init__(self, shift_day: DayType, shift_time: ShiftTimeType, needed: int = 0):
-        # Validate using the values from Literal types
-        if shift_day not in VALID_DAYS:
-            raise ValueError(
-                f"Invalid day: '{shift_day}'. Valid days are: {', '.join(VALID_DAYS)}"
-            )
-        
-        if shift_time not in VALID_SHIFT_TIMES:
-            raise ValueError(
-                f"Invalid shift time: '{shift_time}'. Valid shift times are: {', '.join(VALID_SHIFT_TIMES)}"
-            )
+        return super().__new__(cls)
+
+    def __init__(self, shift_day: DayType, shift_time: ShiftTimeType, group: 'ShiftGroup', needed: int = 0):
+        # Only initialize if this is a new instance
+        if not hasattr(self, 'shift_day'):  # Check if already initialized
+            # Validate using the values from Literal types
+            if shift_day not in VALID_DAYS:
+                raise ValueError(
+                    f"Invalid day: '{shift_day}'. Valid days are: {', '.join(VALID_DAYS)}"
+                )
             
-        if not isinstance(needed, int) or needed < 0:
-            raise ValueError(f"'needed' must be a non-negative integer, got {needed}")
+            if shift_time not in VALID_SHIFT_TIMES:
+                raise ValueError(
+                    f"Invalid shift time: '{shift_time}'. Valid shift times are: {', '.join(VALID_SHIFT_TIMES)}"
+                )
             
-        self.shift_day = shift_day
-        self.shift_time = shift_time
-        self.needed = needed
-        self.assigned_people: List['Person'] = []  # Use string literal type hint
+            if not isinstance(needed, int) or needed < 0:
+                raise ValueError(f"'needed' must be a non-negative integer, got {needed}")
+
+            # Initialize new shift
+            self.shift_day = shift_day
+            self.shift_time = shift_time
+            self.needed = needed
+            self.assigned_people: List['Person'] = []
+            self.group = group
+            # Add shift to group
+            group.add_shift(self)
 
     # Class method to create all possible shifts
     @classmethod
-    def create_all_shifts(cls) -> List['Shift']:
-        return [cls(day, time, needed=0) for day in VALID_DAYS for time in VALID_SHIFT_TIMES]
+    def create_all_shifts(cls, group: 'ShiftGroup') -> List['Shift']:
+        return [cls(day, time, group=group, needed=0) 
+                for day in VALID_DAYS 
+                for time in VALID_SHIFT_TIMES]
 
     # Class method to create weekend shifts
     @classmethod
-    def create_weekend_shifts(cls) -> List['Shift']:
-        return [shift for shift in cls.create_all_shifts() 
+    def create_weekend_shifts(cls, group: 'ShiftGroup') -> List['Shift']:
+        return [shift for shift in cls.create_all_shifts(group) 
                 if shift.is_weekend_shift]
 
     # Class method to create weekday shifts
     @classmethod
-    def create_weekday_shifts(cls) -> List['Shift']:
-        return [shift for shift in cls.create_all_shifts() 
+    def create_weekday_shifts(cls, group: 'ShiftGroup') -> List['Shift']:
+        return [shift for shift in cls.create_all_shifts(group) 
                 if not shift.is_weekend_shift]
 
     @property
@@ -87,8 +99,6 @@ class Shift:
         """
         return (self.shift_day == "Friday" and self.shift_time in ["Evening", "Night"]) or \
                (self.shift_day == "Saturday")
-
-
 
     @property
     def is_morning(self) -> bool:
@@ -150,10 +160,4 @@ class Shift:
     def unassign_person(self, person: 'Person') -> None:
         """Remove a person from this shift"""
         if person in self.assigned_people:
-            self.assigned_people.remove(person)
-
-
-# Initialize the class variables after the complete class definition
-Shift.ALL_SHIFTS = Shift.create_all_shifts()
-Shift.WEEKEND_SHIFTS = Shift.create_weekend_shifts()
-Shift.WEEKDAY_SHIFTS = Shift.create_weekday_shifts() 
+            self.assigned_people.remove(person) 

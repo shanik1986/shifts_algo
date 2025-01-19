@@ -14,7 +14,7 @@ def create_shift_group_from_requirements(df) -> ShiftGroup:
         day = row[df.columns[0]]  # First column is the day
         for shift_time in SHIFTS:
             if pd.notnull(row[shift_time]) and row[shift_time] > 0:
-                shift = Shift(day, shift_time, needed=int(row[shift_time]))
+                shift = Shift(day, shift_time, group=shift_group, needed=int(row[shift_time]))
                 shift_group.add_shift(shift)
     
     return shift_group

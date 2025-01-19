@@ -1,11 +1,13 @@
 import pytest
 from app.google_sheets.import_sheet_data import get_google_sheet_data, parse_shift_constraints, create_shift_group_from_requirements
 from app.scheduler.person import Person
-from app.scheduler.constants import DAYS, SHIFTS
+from app.scheduler.shift import VALID_DAYS, VALID_SHIFT_TIMES
+from app.scheduler.shift_group import ShiftGroup
+from app.scheduler.shift import Shift
 
 #Create a fixture for a sample shift constraints
 @pytest.fixture
-def sample_shift_group():
+def sample_shift_group_from_sheet():
     """
     Create a fixture for shift requirements from the Google Sheet.
     The requirements are:
@@ -24,32 +26,42 @@ def sample_shift_group():
     shift_group = create_shift_group_from_requirements(shift_requirements_data)
     return shift_group
 
+@pytest.fixture
+def complete_shift_group():
+    """Creates a ShiftGroup containing all possible shifts"""
+    group = ShiftGroup()
+    for day in VALID_DAYS:
+        for time in VALID_SHIFT_TIMES:
+            shift = Shift(day, time, needed = 3)
+            group.add_shift(shift)
+    return group
+
 
 
 
 # @pytest.fixture
 # def sample_person_dict_from_sheet():
-    """
-    Creates as a fixture a dictionary from the first row of data in the Google Sheet
-    Test shift blocking functionality
-    Blocked shifts: 
-        Last Saturday Night,
-        Sunday Morning,
-        Monday Noon,
-        Tuesday Evening,
-        Wednesday Night,
-        Thursday Morning,
-        Friday Noon,
-        Saturday Evening
-    All the rest of the shifts are available
-    """
-    shift_constraint_data = get_google_sheet_data("Shifts", "Test Data - People")
-    processed_data = parse_shift_constraints(shift_constraint_data)
-    # Get first person dict and convert to Person object
-    return processed_data[0]
+    # """
+    # Creates as a fixture a dictionary from the first row of data in the Google Sheet
+    # Test shift blocking functionality
+    # Blocked shifts: 
+    #     Last Saturday Night,
+    #     Sunday Morning,
+    #     Monday Noon,
+    #     Tuesday Evening,
+    #     Wednesday Night,
+    #     Thursday Morning,
+    #     Friday Noon,
+    #     Saturday Evening
+    # All the rest of the shifts are available
+    # """
+    # shift_constraint_data = get_google_sheet_data("Shifts", "Test Data - People")
+    # processed_data = parse_shift_constraints(shift_constraint_data)
+    # # Get first person dict and convert to Person object
+    # return processed_data[0]
 
 @pytest.fixture
-def sample_person_from_sheet(sample_shift_group):
+def sample_person_from_sheet(sample_shift_group_from_sheet):
     """Creates as a fixture a Person object from the first row of data in the Google Sheet
     Test shift blocking functionality
     Blocked shifts: 
@@ -64,7 +76,7 @@ def sample_person_from_sheet(sample_shift_group):
     All the rest of the shifts are available
     """
     shift_constraint_data = get_google_sheet_data("Shifts", "Test Data - People")
-    processed_data = parse_shift_constraints(shift_constraint_data, sample_shift_group)
+    processed_data = parse_shift_constraints(shift_constraint_data, sample_shift_group_from_sheet)
     # Get first person dict and convert to Person object
     return processed_data[0]
 
@@ -111,4 +123,34 @@ def sample_person_with_no_constraints():
         max_nights=2,
         are_three_shifts_possible=True,
         night_and_noon_possible=True
+    )
+
+
+@pytest.fixture
+def sample_person(complete_shift_group):
+    """Creates a fixture Person object with predefined constraints"""
+    unavailable_shifts = [
+        shift for shift in complete_shift_group.shifts 
+        if (shift.shift_day, shift.shift_time) in [
+            ("Last Saturday", "Night"),
+            ("Sunday", "Morning"),
+            ("Monday", "Noon"),
+            ("Tuesday", "Evening"),
+            ("Wednesday", "Night"),
+            ("Thursday", "Morning"),
+            ("Friday", "Noon"),
+            ("Saturday", "Evening")
+        ]
+    ]
+    
+    return Person(
+        name="Random Person 1",
+        unavailable=unavailable_shifts,
+        double_shift=False,
+        max_shifts=5,
+        max_nights=2,
+        are_three_shifts_possible=False,
+        night_and_noon_possible=True,
+        shift_counts=0,
+        night_counts=0
     )
