@@ -48,7 +48,7 @@ def sample_person_from_sheet():
 @pytest.fixture
 def sample_current_assignments():
     """Create a fixture for current assignments"""
-    return {day: {shift: [] for shift in SHIFTS} for day in DAYS}
+    return []
 
 #Create a fixture for a sample shift constraints
 @pytest.fixture
