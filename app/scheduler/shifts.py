@@ -88,9 +88,14 @@ class Shift:
         return (self.shift_day == other.shift_day and 
                 self.shift_time == other.shift_time)
 
+    def __hash__(self) -> int:
+        """Makes Shift objects hashable (needed for sets)
+        Two shifts that are equal will have the same hash"""
+        return hash((self.shift_day, self.shift_time))
+
     def __str__(self) -> str:
         """Defines how a shift is converted to string
-        Format: "DayName_ShiftTime" (e.g., "Monday_Morning")"""
+        Format: "DayName ShiftTime" (e.g., "Monday Morning")"""
         return f"{self.shift_day} {self.shift_time}"
 
     def __lt__(self, other: 'Shift') -> bool:
