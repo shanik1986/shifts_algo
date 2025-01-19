@@ -15,10 +15,14 @@ class Shift:
         
         # Validate using the values from Literal types
         if shift_day not in VALID_DAYS:
-            raise ValueError(f"Invalid day: {shift_day}")
+            raise ValueError(
+                f"Invalid day: '{shift_day}'. Valid days are: {', '.join(VALID_DAYS)}"
+            )
         
         if shift_time not in VALID_SHIFT_TIMES:
-            raise ValueError(f"Invalid shift time: {shift_time}")
+            raise ValueError(
+                f"Invalid shift time: '{shift_time}'. Valid shift times are: {', '.join(VALID_SHIFT_TIMES)}"
+            )
             
         self.shift_day = shift_day
         self.shift_time = shift_time
