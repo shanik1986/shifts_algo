@@ -1,10 +1,34 @@
 import pytest
-from app.google_sheets.import_sheet_data import get_google_sheet_data, parse_shift_constraints, parse_shift_requirements
+from app.google_sheets.import_sheet_data import get_google_sheet_data, parse_shift_constraints, create_shift_group_from_requirements
 from app.scheduler.person import Person
 from app.scheduler.constants import DAYS, SHIFTS
 
+#Create a fixture for a sample shift constraints
 @pytest.fixture
-def sample_person_dict_from_sheet():
+def sample_shift_group():
+    """
+    Create a fixture for shift requirements from the Google Sheet.
+    The requirements are:
+        Last Saturday Night: 0
+        All shifts on Sunday and Monday: 3
+        Tuesday Morning: 2
+        Tuesday Noon: 4
+        Tuesday Evening: 5
+        Tuesday Night: 2
+        All shifts on Wednesday, Thursday, Friday, Saturday except for Wednesday Evening: 1
+        Wednesday Evening: 0
+        Saturday Morning, Noon, Evening: 3
+        Saturday Night: 0
+    """
+    shift_requirements_data = get_google_sheet_data("Shifts", "Test Data - Shift Requirements")
+    shift_group = create_shift_group_from_requirements(shift_requirements_data)
+    return shift_group
+
+
+
+
+# @pytest.fixture
+# def sample_person_dict_from_sheet():
     """
     Creates as a fixture a dictionary from the first row of data in the Google Sheet
     Test shift blocking functionality
@@ -25,7 +49,7 @@ def sample_person_dict_from_sheet():
     return processed_data[0]
 
 @pytest.fixture
-def sample_person_from_sheet():
+def sample_person_from_sheet(sample_shift_group):
     """Creates as a fixture a Person object from the first row of data in the Google Sheet
     Test shift blocking functionality
     Blocked shifts: 
@@ -40,9 +64,9 @@ def sample_person_from_sheet():
     All the rest of the shifts are available
     """
     shift_constraint_data = get_google_sheet_data("Shifts", "Test Data - People")
-    processed_data = parse_shift_constraints(shift_constraint_data)
+    processed_data = parse_shift_constraints(shift_constraint_data, sample_shift_group)
     # Get first person dict and convert to Person object
-    return Person.from_dict(processed_data[0])
+    return processed_data[0]
 
 #Create a fixture for empty current assignments
 @pytest.fixture
@@ -50,26 +74,6 @@ def sample_current_assignments():
     """Create a fixture for current assignments"""
     return []
 
-#Create a fixture for a sample shift constraints
-@pytest.fixture
-def sample_shift_constraints():
-    """
-    Create a fixture for shift requirements from the Google Sheet.
-    The requirements are:
-        Last Saturday Night: 0
-        All shifts on Sunday and Monday: 3
-        Tuesday Morning: 2
-        Tuesday Noon: 4
-        Tuesday Evening: 5
-        Tuesday Night: 2
-        All shifts on Wednesday, Thursday, Friday, Saturday except for Wednesday Evening: 1
-        Wednesday Evening: 0
-        Saturday Morning, Noon, Evening: 3
-        Saturday Night: 0
-    """
-    shift_requirements_data = get_google_sheet_data("Shifts", "Test Data - Shift Requirements")
-    processed_data = parse_shift_requirements(shift_requirements_data)
-    return processed_data
 
 #Create a fixture of a person who won't the different types of shifts
 @pytest.fixture
