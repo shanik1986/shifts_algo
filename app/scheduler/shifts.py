@@ -1,4 +1,4 @@
-from typing import Literal, get_args, Optional
+from typing import Literal, get_args, Optional, List
 
 # Define the allowed types using Python's Literal type
 DayType = Literal["Last Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
@@ -9,10 +9,12 @@ VALID_DAYS = get_args(DayType)
 VALID_SHIFT_TIMES = get_args(ShiftTimeType)
 
 class Shift:
+    # Initialize empty class variables
+    ALL_SHIFTS: List['Shift'] = []
+    WEEKEND_SHIFTS: List['Shift'] = []
+    WEEKDAY_SHIFTS: List['Shift'] = []
+
     def __init__(self, shift_day: DayType, shift_time: ShiftTimeType):
-        # Constructor takes a day and time, with type hints for better IDE support
-        # and runtime type checking
-        
         # Validate using the values from Literal types
         if shift_day not in VALID_DAYS:
             raise ValueError(
@@ -26,6 +28,23 @@ class Shift:
             
         self.shift_day = shift_day
         self.shift_time = shift_time
+
+    # Class method to create all possible shifts
+    @classmethod
+    def create_all_shifts(cls) -> List['Shift']:
+        return [cls(day, time) for day in VALID_DAYS for time in VALID_SHIFT_TIMES]
+
+    # Class method to create weekend shifts
+    @classmethod
+    def create_weekend_shifts(cls) -> List['Shift']:
+        return [shift for shift in cls.create_all_shifts() 
+                if shift.is_weekend_shift]
+
+    # Class method to create weekday shifts
+    @classmethod
+    def create_weekday_shifts(cls) -> List['Shift']:
+        return [shift for shift in cls.create_all_shifts() 
+                if not shift.is_weekend_shift]
 
     @property
     def previous_day(self) -> Optional[str]:
@@ -86,4 +105,9 @@ class Shift:
             return day_index_self < day_index_other
         
         # If same day, compare shift times using their position in VALID_SHIFT_TIMES
-        return VALID_SHIFT_TIMES.index(self.shift_time) < VALID_SHIFT_TIMES.index(other.shift_time) 
+        return VALID_SHIFT_TIMES.index(self.shift_time) < VALID_SHIFT_TIMES.index(other.shift_time)
+
+# Initialize the class variables after the complete class definition
+Shift.ALL_SHIFTS = Shift.create_all_shifts()
+Shift.WEEKEND_SHIFTS = Shift.create_weekend_shifts()
+Shift.WEEKDAY_SHIFTS = Shift.create_weekday_shifts() 
