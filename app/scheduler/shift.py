@@ -14,7 +14,7 @@ class Shift:
     WEEKEND_SHIFTS: List['Shift'] = []
     WEEKDAY_SHIFTS: List['Shift'] = []
 
-    def __init__(self, shift_day: DayType, shift_time: ShiftTimeType):
+    def __init__(self, shift_day: DayType, shift_time: ShiftTimeType, needed: int = 0):
         # Validate using the values from Literal types
         if shift_day not in VALID_DAYS:
             raise ValueError(
@@ -26,13 +26,17 @@ class Shift:
                 f"Invalid shift time: '{shift_time}'. Valid shift times are: {', '.join(VALID_SHIFT_TIMES)}"
             )
             
+        if not isinstance(needed, int) or needed < 0:
+            raise ValueError(f"'needed' must be a non-negative integer, got {needed}")
+            
         self.shift_day = shift_day
         self.shift_time = shift_time
+        self.needed = needed
 
     # Class method to create all possible shifts
     @classmethod
     def create_all_shifts(cls) -> List['Shift']:
-        return [cls(day, time) for day in VALID_DAYS for time in VALID_SHIFT_TIMES]
+        return [cls(day, time, needed=0) for day in VALID_DAYS for time in VALID_SHIFT_TIMES]
 
     # Class method to create weekend shifts
     @classmethod

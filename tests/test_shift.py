@@ -143,4 +143,24 @@ def test_shift_collections():
     assert set(Shift.WEEKEND_SHIFTS) == set(expected_weekend_shifts), \
            "WEEKEND_SHIFTS doesn't match expected weekend shifts"
 
+def test_shift_needed_attribute():
+    # Test default value
+    shift = Shift("Monday", "Morning")
+    assert shift.needed == 0
+    
+    # Test custom value
+    shift = Shift("Monday", "Morning", needed=2)
+    assert shift.needed == 2
+    
+    # Test invalid values
+    with pytest.raises(ValueError, match="must be a non-negative integer"):
+        Shift("Monday", "Morning", needed=-1)
+    
+    with pytest.raises(ValueError, match="must be a non-negative integer"):
+        Shift("Monday", "Morning", needed="2")  # type: ignore
+
+def test_shift_string_with_needed():
+    shift = Shift("Monday", "Morning", needed=2)
+    assert str(shift) == "Monday Morning"  # needed count doesn't affect string representation
+
 
