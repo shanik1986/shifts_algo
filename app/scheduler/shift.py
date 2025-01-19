@@ -1,4 +1,5 @@
 from typing import Literal, get_args, Optional, List
+from app.scheduler.person import Person
 
 # Define the allowed types using Python's Literal type
 DayType = Literal["Last Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
@@ -32,6 +33,7 @@ class Shift:
         self.shift_day = shift_day
         self.shift_time = shift_time
         self.needed = needed
+        self.assigned_people: List['Person'] = []  # Initialize empty list
 
     # Class method to create all possible shifts
     @classmethod
@@ -84,6 +86,28 @@ class Shift:
         return (self.shift_day == "Friday" and self.shift_time in ["Evening", "Night"]) or \
                (self.shift_day == "Saturday")
 
+
+
+    @property
+    def is_morning(self) -> bool:
+        """Check if this is a morning shift"""
+        return self.shift_time == "Morning"
+
+    @property
+    def is_noon(self) -> bool:
+        """Check if this is a noon shift"""
+        return self.shift_time == "Noon"
+
+    @property
+    def is_evening(self) -> bool:
+        """Check if this is an evening shift"""
+        return self.shift_time == "Evening"
+    
+    @property
+    def is_night(self) -> bool:
+        """Check if this is a night shift"""
+        return self.shift_time == "Night"
+
     def __eq__(self, other: 'Shift') -> bool:
         """Defines how two shifts are compared for equality
         Two shifts are equal if they have the same day and time"""
@@ -115,6 +139,17 @@ class Shift:
         
         # If same day, compare shift times using their position in VALID_SHIFT_TIMES
         return VALID_SHIFT_TIMES.index(self.shift_time) < VALID_SHIFT_TIMES.index(other.shift_time)
+
+    def assign_person(self, person: 'Person') -> None:
+        """Assign a person to this shift"""
+        if person not in self.assigned_people:
+            self.assigned_people.append(person)
+
+    def unassign_person(self, person: 'Person') -> None:
+        """Remove a person from this shift"""
+        if person in self.assigned_people:
+            self.assigned_people.remove(person)
+
 
 # Initialize the class variables after the complete class definition
 Shift.ALL_SHIFTS = Shift.create_all_shifts()
