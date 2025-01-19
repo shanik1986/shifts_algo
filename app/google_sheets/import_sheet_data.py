@@ -3,7 +3,7 @@ from app.google_sheets.init_sheet_access import get_google_sheet_data
 from app.scheduler.constants import DAYS, SHIFTS
 import sys
 from app.scheduler.person import Person
-
+from app.scheduler.shift import Shift
 # Parse the dataset into a structured format
 def parse_shift_constraints(df):
     # Fix the boolean columns to ensure proper booleans
@@ -25,7 +25,7 @@ def parse_shift_constraints(df):
 
                 availability = row.iloc[column_index]
                 if str(availability).strip().upper() == "FALSE":
-                    unavailable.append((day, shift))
+                    unavailable.append(Shift(day, shift))
                 column_index += 1
 
         # Create Person object but convert to dict to maintain compatibility
