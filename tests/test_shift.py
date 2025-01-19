@@ -1,5 +1,5 @@
 import pytest
-from app.scheduler.shifts import Shift, VALID_DAYS, VALID_SHIFT_TIMES
+from app.scheduler.shift import Shift, VALID_DAYS, VALID_SHIFT_TIMES
 
 
 
