@@ -1,5 +1,7 @@
-from typing import Literal, get_args, Optional, List
-from app.scheduler.person import Person
+from typing import Literal, get_args, Optional, List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.scheduler.person import Person  # Only import for type checking
 
 # Define the allowed types using Python's Literal type
 DayType = Literal["Last Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
@@ -33,7 +35,7 @@ class Shift:
         self.shift_day = shift_day
         self.shift_time = shift_time
         self.needed = needed
-        self.assigned_people: List['Person'] = []  # Initialize empty list
+        self.assigned_people: List['Person'] = []  # Use string literal type hint
 
     # Class method to create all possible shifts
     @classmethod

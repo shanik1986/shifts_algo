@@ -1,5 +1,6 @@
 import pytest
 from app.scheduler.shift import Shift, VALID_DAYS, VALID_SHIFT_TIMES
+from app.scheduler.person import Person
 
 
 
@@ -162,5 +163,40 @@ def test_shift_needed_attribute():
 def test_shift_string_with_needed():
     shift = Shift("Monday", "Morning", needed=2)
     assert str(shift) == "Monday Morning"  # needed count doesn't affect string representation
+
+def test_shift_assignments():
+    shift = Shift("Monday", "Morning", needed=2)
+    
+    person1 = Person(
+        name="Person 1",
+        unavailable=[],  # No unavailable shifts
+        double_shift=True,  # Can work consecutive shifts
+        max_shifts=5,  # Can work up to 5 shifts
+        max_nights=2,  # Can work up to 2 night shifts
+        are_three_shifts_possible=True,  # Can work three shifts in a day
+        night_and_noon_possible=True,  # Can work noon after night
+        max_weekend_shifts=1  # Can work one weekend shift
+    )
+    
+    person2 = Person(
+        name="Person 2",
+        unavailable=[],
+        double_shift=True,
+        max_shifts=5,
+        max_nights=2,
+        are_three_shifts_possible=True,
+        night_and_noon_possible=True,
+        max_weekend_shifts=1
+    )
+    
+    # Test assignment
+    shift.assign_person(person1)
+    assert person1 in shift.assigned_people
+
+    
+    # Test unassignment
+    shift.unassign_person(person1)
+    assert person1 not in shift.assigned_people
+
 
 
