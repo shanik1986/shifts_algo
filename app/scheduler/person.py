@@ -40,7 +40,7 @@ class Person:
             weekend_shifts=person_dict.get('weekend_shifts', 0)
         )
 
-    def assign_to_shift(self, shift: Shift) -> None:
+    def assign_to_shift(self, shift: Shift, current_assignments: dict | None = None) -> None:
         """Assign person to a shift"""
         shift.assign_person(self)
         self.shift_counts += 1
@@ -49,7 +49,7 @@ class Person:
         if shift.is_weekend_shift:
             self.weekend_shifts += 1
 
-    def unassign_from_shift(self, shift: Shift) -> None:
+    def unassign_from_shift(self, shift: Shift, current_assignments: dict | None = None) -> None:
         """Unassign person from a shift"""
         shift.unassign_person(self)
         self.shift_counts -= 1
