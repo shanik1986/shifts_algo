@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Tuple, Dict
 from app.scheduler.utils import get_adjacent_days, get_adjacent_shifts, is_weekend_shift, debug_log
+from app.scheduler.shift import Shift
 
 
 @dataclass
@@ -39,46 +40,27 @@ class Person:
             weekend_shifts=person_dict.get('weekend_shifts', 0)
         )
 
-    def assign_to_shift(self, day: str, shift: str, current_assignments: dict):
-        """Assign this person to a shift"""
-        current_assignments[day][shift].append(self.name)
-        self.increment_shift_count()
-        if shift == "Night":
-            self.increment_night_count()
-        if is_weekend_shift(day, shift):
-            self.weekend_shifts += 1
-    
-    
-    def unassign_from_shift(self, day: str, shift: str, current_assignments: dict):
-        """Unassign this person from a shift"""
-        current_assignments[day][shift].remove(self.name)
-        self.decrement_shift_count()
-        if shift == "Night":
-            self.decrement_night_count()
-        if is_weekend_shift(day, shift):
-            self.weekend_shifts -= 1
-    
-    # Increment shift count
-    def increment_shift_count(self):
+    def assign_to_shift(self, shift: Shift) -> None:
+        """Assign person to a shift"""
+        shift.assign_person(self)
         self.shift_counts += 1
-    
+        if shift.is_night:
+            self.night_counts += 1
+        if shift.is_weekend_shift:
+            self.weekend_shifts += 1
 
-    # Increment night count
-    def increment_night_count(self):
-        self.night_counts += 1
-    
-    # Decrement shift count
-    def decrement_shift_count(self):
+    def unassign_from_shift(self, shift: Shift) -> None:
+        """Unassign person from a shift"""
+        shift.unassign_person(self)
         self.shift_counts -= 1
-    
-    # Decrement night count
-    def decrement_night_count(self):
-        self.night_counts -= 1
-    
-    def is_shift_assigned(self, day, shift, current_assignments):
+        if shift.is_night:
+            self.night_counts -= 1
+        if shift.is_weekend_shift:
+            self.weekend_shifts -= 1
+
+    def is_shift_assigned(self, shift: Shift) -> bool:
         """Check if person is assigned to a shift"""
-        return self.name in current_assignments[day][shift]
-    
+        return self in shift.assigned_people
     
     def is_shift_blocked(self, day: str, shift: str) -> bool:
         """
@@ -96,39 +78,38 @@ class Person:
         """Check if person has reached their maximum nights"""
         return self.night_counts >= self.max_nights
     
-    def is_morning_after_night(self, day, shift, current_assignments):
+    def is_morning_after_night(self, shift: Shift, current_assignments) -> bool:
         """Check if this will be the morning shift after a night shift or night shift before a morning shift"""
-
-        previous_day, next_day = get_adjacent_days(day)
-        if previous_day and shift == "Morning":
-            return self.is_shift_assigned(previous_day, "Night", current_assignments)
+        if shift.is_morning and shift.previous_day:
+            return self.name in current_assignments[shift.previous_day]["Night"]
         
-        elif next_day and shift == "Night":
-            return self.is_shift_assigned(next_day, "Morning", current_assignments)
+        elif shift.is_night and shift.next_day:
+            return self.name in current_assignments[shift.next_day]["Morning"]
         
         return False
 
-    
-    def is_noon_after_night(self, day, shift, current_assignments):
+    def is_noon_after_night(self, shift: Shift, current_assignments) -> bool:
         """Check if this will be the noon shift after a night shift or night shift before a noon shift"""
-        previous_day, next_day = get_adjacent_days(day)
+        if shift.is_noon and shift.previous_day:
+            return self.name in current_assignments[shift.previous_day]["Night"]
+            
+        elif shift.is_night and shift.next_day:
+            return self.name in current_assignments[shift.next_day]["Noon"]
+            
+        return False
+    
+    def is_consecutive_shift(self, shift: Shift, current_assignments) -> bool:
+        """Check if this will be the consecutive shift"""
+        if shift.previous_shift:
+            if self.name in current_assignments[shift.shift_day][shift.previous_shift]:
+                return True
+                
+        if shift.next_shift:
+            if self.name in current_assignments[shift.shift_day][shift.next_shift]:
+                return True
+                
+        return False
 
-        if previous_day and shift == "Noon":
-            return self.is_shift_assigned(previous_day, "Night", current_assignments)
-        elif next_day and shift == "Night":
-            return self.is_shift_assigned(next_day, "Noon", current_assignments)
-        return False
-    
-    
-    def is_consequtive_shift(self, day, shift, current_assignments):
-        """Check if this will be the consequtive shift"""
-        previous_shift, next_shift = get_adjacent_shifts(shift)
-        if next_shift and self.is_shift_assigned(day, next_shift, current_assignments):
-            return True
-        elif previous_shift and self.is_shift_assigned(day, previous_shift, current_assignments):
-            return True
-        return False
-    
     def is_third_shift(self, day, current_assignments):
         """Check if this is the third shift of the day"""
         counter = 0
@@ -137,15 +118,14 @@ class Person:
                 counter+=1
         return counter >=2
 
-    def is_night_after_evening(self, day, shift, current_assignments):
-        """
-        Check if this will be the night shift after an evening shift
-        Function should only accept "Night" or "Evening" as arguments
-        """
-        if shift == "Night":
-            return self.is_shift_assigned(day, "Evening", current_assignments)
-        elif shift == "Evening":
-            return self.is_shift_assigned(day, "Night", current_assignments)
+    def is_night_after_evening(self, shift: Shift, current_assignments) -> bool:
+        """Check if this will be the night shift after an evening shift or evening before night"""
+        if shift.is_night:
+            return self.name in current_assignments[shift.shift_day]["Evening"]
+            
+        elif shift.is_evening:
+            return self.name in current_assignments[shift.shift_day]["Night"]
+            
         return False
 
 
@@ -174,22 +154,22 @@ class Person:
             return False
             
         # Check if the person reached his max nights
-        if self.is_max_nights_reached() and shift == "Night":
+        if self.is_max_nights_reached() and shift.is_night:
             debug_log(base_msg + "Not available - Maximum night shifts reached")
             return False
         
         # Check if this will be the morning shift after a night shift or night shift before a morning shift
-        if self.is_morning_after_night(day, shift, current_assignments):
+        if self.is_morning_after_night(shift, current_assignments):
             debug_log(base_msg + "Not available - Morning after night/Night before morning conflict")
             return False
         
         # Check Night before Noon constraint
-        if not(self.night_and_noon_possible) and self.is_noon_after_night(day, shift, current_assignments):
+        if not(self.night_and_noon_possible) and self.is_noon_after_night(shift, current_assignments):
             debug_log(base_msg + "Not available - Night and noon conflict")
             return False
 
         # Check if this is a consecutive shift and the person is not allowed to have double shifts
-        if not(self.double_shift) and self.is_consequtive_shift(day, shift, current_assignments):
+        if not(self.double_shift) and self.is_consecutive_shift(shift, current_assignments):
             debug_log(base_msg + "Not available - Consecutive shift not allowed")
             return False        
         
@@ -200,7 +180,7 @@ class Person:
                 return False
         
         # Check if this is the night shift after an evening shift
-        if (shift == "Night" or shift == "Evening") and self.is_night_after_evening(day, shift, current_assignments):
+        if (shift == "Night" or shift == "Evening") and self.is_night_after_evening(shift, current_assignments):
             debug_log(base_msg + "Not available - Night after evening/Evening before night conflict")
             return False
 
