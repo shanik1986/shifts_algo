@@ -11,7 +11,6 @@ import threading
 from itertools import combinations
 import copy
 from app.scheduler.person import Person
-from app.scheduler.validations import get_eligible_people
 from app.scheduler.utils import debug_log
 from app.scheduler.constants import DAYS, SHIFTS
 from app.google_sheets.import_sheet_data import get_fresh_data
