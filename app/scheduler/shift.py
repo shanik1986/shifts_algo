@@ -44,6 +44,7 @@ class Shift:
             self.needed = needed
             self.assigned_people: List['Person'] = []
             self.group = group
+            self.is_staffed = False
             # Add shift to group
             group.add_shift(self)
 
@@ -156,8 +157,9 @@ class Shift:
         """Assign a person to this shift"""
         if person not in self.assigned_people:
             self.assigned_people.append(person)
-
+            self.is_staffed = True if len(self.assigned_people) >= self.needed else False
     def unassign_person(self, person: 'Person') -> None:
         """Remove a person from this shift"""
         if person in self.assigned_people:
             self.assigned_people.remove(person) 
+            self.is_staffed = True if len(self.assigned_people) >= self.needed else False

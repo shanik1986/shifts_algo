@@ -1,6 +1,9 @@
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
 from app.scheduler.shift import Shift
-from app.scheduler.person import Person
+from app.scheduler.utils import debug_log
+
+if TYPE_CHECKING:
+    from app.scheduler.person import Person
 
 class ShiftGroup:
     """Manages a group of shifts and their assignments"""
@@ -22,17 +25,21 @@ class ShiftGroup:
         return None
     
     # The function receives a shift, and returns all the shifts from the ShiftGroup that have the same day  
-    def get_all_same_day_shifts(self, shift: Shift) -> List[Shift]:
-        return [s for s in self.shifts if s.shift_day == shift.shift_day]
+    def get_all_same_day_shifts(self, tested_shift: Shift) -> List[Shift]:
+        """Get all shifts from the same day as the given shift"""
+        return [shift for shift in self.shifts if shift.shift_day == tested_shift.shift_day]
+    
+    def get_all_shifts_from_day(self, day: str) -> List[Shift]:
+        return [s for s in self.shifts if s.shift_day == day]
 
-    def is_person_assigned(self, person: Person, day: str, time: str) -> bool:
+    def is_person_assigned(self, person: 'Person', day: str, time: str) -> bool:
         """Check if a person is assigned to a specific day and time"""
         shift = self.get_shift(day, time)
         return shift is not None and person in shift.assigned_people 
     
 
     
-    def is_morning_after_night(self, person: Person, shift: Shift) -> bool:
+    def is_morning_after_night(self, person: 'Person', shift: Shift) -> bool:
         """Check if assignment will violate morning after night constraint"""
         if shift.is_morning and shift.previous_day:
             return self.is_person_assigned(person, shift.previous_day, "Night")
@@ -42,7 +49,7 @@ class ShiftGroup:
         
         return False
     
-    def is_noon_after_night(self, person: Person, shift: Shift) -> bool:
+    def is_noon_after_night(self, person: 'Person', shift: Shift) -> bool:
         """Check if assignment will violate noon after night constraint"""
         if shift.is_noon and shift.previous_day:
             return self.is_person_assigned(person, shift.previous_day, "Night")
@@ -50,7 +57,7 @@ class ShiftGroup:
             return self.is_person_assigned(person, shift.next_day, "Noon")
         return False
     
-    def is_consecutive_shift(self, person: Person, shift: Shift) -> bool:
+    def is_consecutive_shift(self, person: 'Person', shift: Shift) -> bool:
         """Check if assignment will violate consecutive shift constraint"""
         if shift.previous_shift and self.is_person_assigned(person, shift.shift_day, shift.previous_shift):
             return True
@@ -58,21 +65,28 @@ class ShiftGroup:
             return True
         return False
     
-    def is_third_shift(self, person: Person, shift: Shift) -> bool:
+    def is_night_after_evening(self, person: 'Person', shift: Shift) -> bool:
+        """Check if assignment will violate night after evening constraint"""
+        if shift.is_night and self.is_person_assigned(person, shift.shift_day, "Evening"):
+            return True
+        elif shift.is_evening and self.is_person_assigned(person, shift.shift_day, "Night"):
+            return True
+        return False
+    
+    def is_third_shift(self, person: 'Person', shift: Shift) -> bool:
         """Check if assignment will violate third shift constraint"""
         count = self.count_shifts_in_day(person, shift.shift_day)
-        return count >= 2 and shift.is_evening
+        return True if count >= 2 else False
     
-    def count_shifts_in_day(self, person: Person, day: str) -> int:
+    def count_shifts_in_day(self, person: 'Person', day: str) -> int:
         """Count how many shifts a person has on a given day"""
         count = 0
-        for shift in self.get_all_same_day_shifts(day):
+        for shift in self.get_all_shifts_from_day(day):
             if person in shift.assigned_people:
                 count += 1
-        return count 
-        return count 
+        return count
 
-    def check_all_constraints(self, person: Person, shift: Shift, 
+    def check_all_constraints(self, person: 'Person', shift: Shift, 
                             allow_consecutive: bool = False, 
                             allow_three_shifts: bool = False, 
                             allow_night_noon: bool = False) -> Tuple[bool, str]:
@@ -81,11 +95,11 @@ class ShiftGroup:
         Returns (is_allowed, reason_if_not_allowed)
         """
         # Morning after night
-        if not self.is_morning_after_night(person, shift):
+        if self.is_morning_after_night(person, shift):
             return False, "Morning after night conflict"
         
         # Night and noon
-        if not allow_night_noon and not self.is_noon_after_night(person, shift):
+        if not allow_night_noon and self.is_noon_after_night(person, shift):
             return False, "Night and noon conflict"
 
         # Consecutive shifts
@@ -93,14 +107,14 @@ class ShiftGroup:
             return False, "Consecutive shift not allowed"
         
         # Third shift
-        if self.count_shifts_in_day(person, shift.shift_day) >= 2:
-            if not allow_three_shifts or shift.is_evening:
+        if self.is_third_shift(person, shift):
+            if not allow_three_shifts:
                 return False, "Third shift not allowed"
+            elif shift.is_evening or person.is_shift_assigned(Shift(shift.shift_day, "Evening", group=self)):
+                return False, "Third shift not allowed when evening shift is assigned"
         
         # Night after evening
-        if shift.is_night and self.is_person_assigned(person, shift.shift_day, "Evening"):
-            return False, "Night after evening conflict"
-        elif shift.is_evening and self.is_person_assigned(person, shift.shift_day, "Night"):
+        if self.is_night_after_evening(person, shift):
             return False, "Night after evening conflict"
 
         return True, "" 

@@ -32,7 +32,7 @@ def complete_shift_group():
     group = ShiftGroup()
     for day in VALID_DAYS:
         for time in VALID_SHIFT_TIMES:
-            shift = Shift(day, time, needed = 3)
+            shift = Shift(day, time, needed = 3, group=group)
             group.add_shift(shift)
     return group
 
