@@ -163,3 +163,11 @@ class Shift:
         if person in self.assigned_people:
             self.assigned_people.remove(person) 
             self.is_staffed = True if len(self.assigned_people) >= self.needed else False
+
+    def copy_with_group(self) -> 'Shift':
+        """Create a copy of this shift, optionally with a new group"""
+        group = self.group
+        new_shift = Shift(self.shift_day, self.shift_time, group, self.needed)
+        new_shift.is_staffed = self.is_staffed
+        new_shift.assigned_people = self.assigned_people.copy()
+        return new_shift

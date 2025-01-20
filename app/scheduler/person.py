@@ -63,9 +63,9 @@ class Person:
         base_msg = f"Checking {self.name} availability for {shift.shift_day} {shift.shift_time}: "
 
         # Basic constraints
-        if shift.is_weekend_shift and self.weekend_shifts >= self.max_weekend_shifts:
-            debug_log(base_msg + "Not available - Weekend shift limit reached")
-            return False
+        # if shift.is_weekend_shift and self.weekend_shifts >= self.max_weekend_shifts:
+        #     debug_log(base_msg + "Not available - Weekend shift limit reached")
+        #     return False
         
         if self.is_shift_blocked(shift):
             debug_log(base_msg + "Not available - Shift is blocked")
