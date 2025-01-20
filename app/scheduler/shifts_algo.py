@@ -16,6 +16,7 @@ from app.scheduler.constants import DAYS, SHIFTS
 from app.google_sheets.import_sheet_data import get_fresh_data
 from app.scheduler.shift import Shift, VALID_DAYS
 from app.scheduler.shift_group import ShiftGroup
+from app.scheduler.combo_manager import ComboManager
 
 debug_mode = True
 def debug_log(message):
@@ -108,22 +109,16 @@ def backtrack_assign(remaining_shifts: List[Shift], people: List[Person], shift_
         return False, f"Not enough eligible people for {current_shift}"
 
     # Generate all combinations
-    all_combos = list(combinations(eligible_people, current_shift.needed))
+    all_combos = [list(combo) for combo in combinations(eligible_people, current_shift.needed)]
     debug_log(f"Generated {len(all_combos)} combinations")
 
     # Compute constraint scores for each eligible person
     for person in eligible_people:
         person.calculate_constraint_score(current_shift.group)
 
-    # Generate all combinations and calculate their scores
-    combo_scores = []
-    for combo in all_combos:
-        # Calculate regular constraint score
-        constraint_score = sum(person.constraints_score for person in combo)
-        combo_scores.append((constraint_score, list(combo)))
-
-    # Sort combinations by their constraint score (lowest score first)
-    combo_scores.sort(key=lambda x: x[0])
+    # Replace the existing combo sorting logic with:
+    combo_manager = ComboManager()
+    sorted_combos = combo_manager.sort_combinations(all_combos, current_shift)
 
     # Count double shift opportunities in each combo
     def count_double_shifts(combo, shift, shift_group):
@@ -154,9 +149,9 @@ def backtrack_assign(remaining_shifts: List[Shift], people: List[Person], shift_
                          ))
 
     tested_combos = []
-    remaining_combos = [[p.name for p in combo] for _, combo in combo_scores]
+    remaining_combos = [[p.name for p in combo] for combo in sorted_combos]
     # Try all combinations of eligible people for this shift
-    for combo_score, combo in combo_scores:
+    for combo in sorted_combos:
         debug_log(f"================================================")
         debug_log(f"{len(remaining_combos)} Remaining combos: {remaining_combos}")
         debug_log(f"{len(tested_combos)} Tested combos: {tested_combos}")
