@@ -117,4 +117,36 @@ class ShiftGroup:
         if self.is_night_after_evening(person, shift):
             return False, "Night after evening conflict"
 
-        return True, "" 
+        return True, ""
+
+    def rank_shifts(self, people: List['Person']) -> List[Shift]:
+        """
+        Rank shifts by their constraint level: available people / needed.
+        Returns a sorted list of shifts, with most constrained first.
+        """
+        rankings = []
+        for shift in self.shifts:
+            if shift.is_staffed:  # Skip already staffed shifts
+                continue
+                
+            # Get eligible people for this shift
+            eligible_people = [p for p in people if p.is_eligible_for_shift(shift)]
+            
+            if eligible_people:
+                constraint_score = len(eligible_people) / shift.needed
+            else:
+                constraint_score = 0
+                
+            rankings.append((constraint_score, shift))
+            print(f"Shift: {shift}, Needed: {shift.needed}, "
+                  f"Available people: {len(eligible_people)}, Score: {constraint_score}")
+
+        sorted_rankings = sorted(rankings, key=lambda x: x[0])  # Sort by constraint score
+
+        print("\n=== Ranked Shifts ===")
+        for rank, (score, shift) in enumerate(sorted_rankings, 1):
+            print(f"Rank {rank}: {shift} with score {score}")
+        print("=====================\n")
+        
+        # Return just the sorted shifts
+        return [shift for _, shift in sorted_rankings] 

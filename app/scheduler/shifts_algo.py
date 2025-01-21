@@ -28,39 +28,6 @@ def debug_log(message):
         print(message)
 
 
-def rank_shifts(shift_group: ShiftGroup, people: List[Person]) -> List[Shift]:
-    """
-    Rank shifts by their constraint level: available people / needed.
-    Returns a sorted list of shifts, with most constrained first.
-    """
-    rankings = []
-    for shift in shift_group.shifts:
-        if shift.is_staffed:  # Skip already staffed shifts
-            continue
-            
-        # Get eligible people for this shift
-        eligible_people = [p for p in people if p.is_eligible_for_shift(shift)]
-        
-        if eligible_people:
-            constraint_score = len(eligible_people) / shift.needed
-        else:
-            constraint_score = 0
-            
-        rankings.append((constraint_score, shift))
-        print(f"Shift: {shift}, Needed: {shift.needed}, "
-              f"Available people: {len(eligible_people)}, Score: {constraint_score}")
-
-    sorted_rankings = sorted(rankings, key=lambda x: x[0])  # Sort by constraint score
-
-    print("\n=== Ranked Shifts ===")
-    for rank, (score, shift) in enumerate(sorted_rankings, 1):
-        print(f"Rank {rank}: {shift} with score {score}")
-    print("=====================\n")
-    
-    # Return just the sorted shifts
-    return [shift for _, shift in sorted_rankings]
-
-
 def validate_remaining_shifts(remaining_shifts, people):
     """Validate remaining shifts have enough eligible people"""
     for shift in remaining_shifts:
@@ -181,7 +148,7 @@ def backtrack_assign(remaining_shifts: List[Shift], people: List[Person], shift_
         debug_log(f"Removing {current_shift} from remaining shifts")
         debug_log(f"  Remaining shifts: {remaining_shifts}")
         
-        ranked_shifts = [shift.copy_with_group() for shift in rank_shifts(shift_group, people)]
+        ranked_shifts = [shift.copy_with_group() for shift in shift_group.rank_shifts(people)]
         
         if validate_remaining_shifts(ranked_shifts, people):
             result, reason = backtrack_assign(
@@ -246,7 +213,7 @@ def run_shift_algorithm(shift_group=None, people=None, timeout=None):
             shift_group, people = get_fresh_data()
         
         # Sort shifts based on constraint level
-        remaining_shifts = rank_shifts(shift_group, people)
+        remaining_shifts = shift_group.rank_shifts(people)
         
         # Run the backtracking assignment
         max_depth = 10000
