@@ -13,7 +13,11 @@ import copy
 from app.scheduler.person import Person
 from app.scheduler.utils import debug_log
 from app.scheduler.constants import DAYS, SHIFTS
-from app.google_sheets.import_sheet_data import get_fresh_data
+from app.google_sheets.import_sheet_data import (
+    get_fresh_data, 
+    create_shift_group_from_requirements, 
+    parse_shift_constraints
+)
 from app.scheduler.shift import Shift, VALID_DAYS
 from app.scheduler.shift_group import ShiftGroup
 from app.scheduler.combo_manager import ComboManager
@@ -221,38 +225,25 @@ def backtrack_assign(remaining_shifts: List[Shift], people: List[Person], shift_
 
 
 
-def run_shift_algorithm(shift_requirements=None, shift_constraints=None, timeout=None):
+def run_shift_algorithm(shift_group=None, people=None, timeout=None):
     """
     Run the algorithm with timeout
+    
+    Args:
+        shift_group: ShiftGroup object containing all shifts
+        people: List of Person objects
+        timeout: Maximum time to run algorithm
+        
+    Returns:
+        Tuple of (success, assignments, reason, shift_counts, people)
     """
     cancel_event = threading.Event()
     
-    def algorithm_worker(shift_requirements, shift_constraints):
+    def algorithm_worker(shift_group, people):
         # If no data passed, get fresh data from import_sheet_data
-        if shift_requirements is None or shift_constraints is None:
+        if shift_group is None or people is None:
+            # Keep the same order as our return value
             shift_group, people = get_fresh_data()
-        
-        
-        # remaining_shifts = []
-        
-        # # Create shifts and add them to group
-        # for day, shifts in shift_requirements.items():
-        #     for shift_time, needed in shifts.items():
-        #         if needed > 0:
-        #             shift = Shift(day, shift_time, group=shift_group, needed=needed)
-        #             remaining_shifts.append(shift)
-
-        # # Calculate max combinations for any shift
-        # max_combinations = 0
-        # for shift in remaining_shifts:
-        #     num_combinations = len(list(combinations(people, shift.needed)))
-        #     if num_combinations > max_combinations:
-        #         max_combinations = num_combinations
-        #         max_shift = shift
-
-        # print(f"Maximum combinations ({max_combinations}) occurs for shift: {max_shift}")
-
-        # No need for current_assignments dict anymore - shifts track their own assignments
         
         # Sort shifts based on constraint level
         remaining_shifts = rank_shifts(shift_group, people)
@@ -267,38 +258,54 @@ def run_shift_algorithm(shift_requirements=None, shift_constraints=None, timeout
             cancel_event=cancel_event
         )
         
-        # Get shift counts from Person objects for display
-
-        return success, people, shift_group
+        # Keep consistent return order throughout the function
+        return success, reason, shift_group, people
 
     with ThreadPoolExecutor() as executor:
-        future = executor.submit(algorithm_worker, shift_requirements, shift_constraints)
+        future = executor.submit(algorithm_worker, shift_group, people)
         try:
-            return future.result(timeout=timeout)
+            success, reason, shift_group, people = future.result(timeout=timeout)
+            
+            if success:
+                # Create web interface dictionaries
+                assignments = {}
+                for day in VALID_DAYS:
+                    assignments[day] = {}
+                    today_shifts = shift_group.get_all_shifts_from_day(day)
+                    for shift in today_shifts:
+                        if shift.is_staffed:
+                            assignments[day][shift.shift_time] = [p.name for p in shift.assigned_people]
+                        else:
+                            assignments[day][shift.shift_time] = []
+                
+                # Create shift_counts dictionary from people
+                shift_counts = {person.name: person.shift_counts for person in people}
+                
+                return success, assignments, reason, shift_counts, people
+            else:
+                return False, None, reason, None, None
+            
         except TimeoutError:
             cancel_event.set()  # Signal algorithm to stop
             return False, None, "Algorithm timed out", None, None
 
 
 if __name__ == '__main__':
-    success, people, shift_group = run_shift_algorithm()
+    success, assignments, reason, shift_counts, people = run_shift_algorithm()
     
     if success:
         print("\n=== Shifts Successfully Assigned ===")
-        for day in VALID_DAYS:
+        for day, day_assignments in assignments.items():
             print(f"{day}")
-            today_shifts = shift_group.get_all_shifts_from_day(day)
-            for shift in today_shifts:
-                if shift.is_staffed:
-                    # Convert Person objects to names when joining
-                    assigned_names = [p.name for p in shift.assigned_people]
-                    print(f"  {shift.shift_time}: {', '.join(assigned_names)}")
+            for shift_time, assigned_people in day_assignments.items():
+                if assigned_people:
+                    print(f"  {shift_time}: {', '.join(assigned_people)}")
                 else:
-                    print(f"  {shift.shift_time}: Unassigned")
+                    print(f"  {shift_time}: Unassigned")
         
         print("\n=== Shifts Assigned Per Person ===")
-        for person in people:
-            print(f"{person.name}: {person.shift_counts} shifts")
+        for person_name, count in shift_counts.items():
+            print(f"{person_name}: {count} shifts")
             
     else:
-        print(f"\nNo solution found: {"reason"}")
+        print(f"\nNo solution found: {reason}")

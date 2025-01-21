@@ -6,7 +6,7 @@ from app.scheduler.person import Person
 from app.scheduler.shift import Shift, VALID_DAYS, VALID_SHIFT_TIMES
 from app.scheduler.shift_group import ShiftGroup
 
-def create_shift_group_from_requirements(df) -> ShiftGroup:
+def create_shift_group_from_requirements(df: pd.DataFrame) -> ShiftGroup:
     """Create a ShiftGroup with all shifts from requirements"""
     shift_group = ShiftGroup()
     
@@ -19,7 +19,7 @@ def create_shift_group_from_requirements(df) -> ShiftGroup:
     
     return shift_group
 
-def parse_shift_constraints(df, shift_group: ShiftGroup):
+def parse_shift_constraints(df: pd.DataFrame, shift_group: ShiftGroup):
     """Parse shift constraints using existing shifts from ShiftGroup"""
     # Fix the boolean columns
     boolean_columns = ["Double Shifts?", "3 Shift Days?", "Night + Noon"]
@@ -72,10 +72,7 @@ def parse_shift_requirements(df):
     return shifts_per_day
 
 def get_fresh_data():
-    """
-    Gets fresh data from Google Sheets and processes it
-    Returns: shift_group, people
-    """
+    """Gets fresh data from Google Sheets and processes it"""
     shift_requirements_data = get_google_sheet_data("Shifts", "Needed Shifts")
     shift_constraint_data = get_google_sheet_data("Shifts", "Real Data - 15/01")
     
@@ -85,7 +82,7 @@ def get_fresh_data():
     # Then parse constraints using the existing shifts
     people = parse_shift_constraints(shift_constraint_data, shift_group)
     
-    return shift_group, people
+    return shift_group, people  # Returns ShiftGroup and list of Person objects
 
 # print(shift_requirements)
 # print(structured_data)
