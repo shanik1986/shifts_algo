@@ -13,9 +13,14 @@ import copy
 from app.scheduler.person import Person
 from app.scheduler.utils import debug_log
 from app.scheduler.constants import DAYS, SHIFTS
-from app.google_sheets.import_sheet_data import get_fresh_data
+from app.google_sheets.import_sheet_data import (
+    get_fresh_data, 
+    create_shift_group_from_requirements, 
+    parse_shift_constraints
+)
 from app.scheduler.shift import Shift, VALID_DAYS
 from app.scheduler.shift_group import ShiftGroup
+from app.scheduler.combo_manager import ComboManager
 
 debug_mode = True
 def debug_log(message):
@@ -108,23 +113,20 @@ def backtrack_assign(remaining_shifts: List[Shift], people: List[Person], shift_
         return False, f"Not enough eligible people for {current_shift}"
 
     # Generate all combinations
-    all_combos = list(combinations(eligible_people, current_shift.needed))
+    all_combos = [list(combo) for combo in combinations(eligible_people, current_shift.needed)]
     debug_log(f"Generated {len(all_combos)} combinations")
 
     # Compute constraint scores for each eligible person
     for person in eligible_people:
         person.calculate_constraint_score(current_shift.group)
 
-    # Generate all combinations and calculate their scores
-    combo_scores = []
-    for combo in all_combos:
-        # Calculate regular constraint score
-        constraint_score = sum(person.constraints_score for person in combo)
-        combo_scores.append((constraint_score, list(combo)))
-
-    # Sort combinations by their constraint score (lowest score first)
-    combo_scores.sort(key=lambda x: x[0])
-
+    # Get initial sort by constraints from ComboManager
+    combo_manager = ComboManager()
+    constraint_sorted_combos = combo_manager.sort_combinations(all_combos, current_shift)
+    
+    # Convert to scored format for additional sorting
+    scored_combos = [(sum(p.constraints_score for p in combo), combo) for combo in constraint_sorted_combos]
+    
     # Count double shift opportunities in each combo
     def count_double_shifts(combo, shift, shift_group):
         return sum(1 for person in combo 
@@ -138,25 +140,29 @@ def backtrack_assign(remaining_shifts: List[Shift], people: List[Person], shift_
         {"Shani Keynan", "Yoram"},
         {"Shani Keynan", "Maor"}
     ]
-
     
     # The function returns True if the tested combo has any of the target name pairs
     def has_both_target_names(combo, target_names_list):
         names_in_combo = {p.name for p in combo}
         return any(len(names_in_combo & target_pair) == 2 for target_pair in target_names_list)
 
-    # Sort combinations with priority: both target names first, then double shifts, then constraint score
-    combo_scores = sorted(combo_scores, 
-                         key=lambda x: (
-                             -int(has_both_target_names(x[1], target_names)),  # Both target names first (1 or 0)
-                             -count_double_shifts(x[1], current_shift, shift_group),  # Then double shifts
-                             x[0]  # Then constraint score
-                         ))
+    # Apply additional sorting criteria while maintaining relative constraint order
+    final_sorted_combos = sorted(
+        scored_combos,
+        key=lambda x: (
+            -int(has_both_target_names(x[1], target_names)),  # Target names first (1 or 0)
+            -count_double_shifts(x[1], current_shift, shift_group),  # Then double shifts
+            x[0]  # Finally, maintain constraint score order
+        )
+    )
+
+    # Extract just the combinations without scores
+    sorted_combos = [combo for _, combo in final_sorted_combos]
 
     tested_combos = []
-    remaining_combos = [[p.name for p in combo] for _, combo in combo_scores]
+    remaining_combos = [[p.name for p in combo] for combo in sorted_combos]
     # Try all combinations of eligible people for this shift
-    for combo_score, combo in combo_scores:
+    for combo in sorted_combos:
         debug_log(f"================================================")
         debug_log(f"{len(remaining_combos)} Remaining combos: {remaining_combos}")
         debug_log(f"{len(tested_combos)} Tested combos: {tested_combos}")
@@ -219,38 +225,25 @@ def backtrack_assign(remaining_shifts: List[Shift], people: List[Person], shift_
 
 
 
-def run_shift_algorithm(shift_requirements=None, shift_constraints=None, timeout=None):
+def run_shift_algorithm(shift_group=None, people=None, timeout=None):
     """
     Run the algorithm with timeout
+    
+    Args:
+        shift_group: ShiftGroup object containing all shifts
+        people: List of Person objects
+        timeout: Maximum time to run algorithm
+        
+    Returns:
+        Tuple of (success, assignments, reason, shift_counts, people)
     """
     cancel_event = threading.Event()
     
-    def algorithm_worker(shift_requirements, shift_constraints):
+    def algorithm_worker(shift_group, people):
         # If no data passed, get fresh data from import_sheet_data
-        if shift_requirements is None or shift_constraints is None:
+        if shift_group is None or people is None:
+            # Keep the same order as our return value
             shift_group, people = get_fresh_data()
-        
-        
-        # remaining_shifts = []
-        
-        # # Create shifts and add them to group
-        # for day, shifts in shift_requirements.items():
-        #     for shift_time, needed in shifts.items():
-        #         if needed > 0:
-        #             shift = Shift(day, shift_time, group=shift_group, needed=needed)
-        #             remaining_shifts.append(shift)
-
-        # # Calculate max combinations for any shift
-        # max_combinations = 0
-        # for shift in remaining_shifts:
-        #     num_combinations = len(list(combinations(people, shift.needed)))
-        #     if num_combinations > max_combinations:
-        #         max_combinations = num_combinations
-        #         max_shift = shift
-
-        # print(f"Maximum combinations ({max_combinations}) occurs for shift: {max_shift}")
-
-        # No need for current_assignments dict anymore - shifts track their own assignments
         
         # Sort shifts based on constraint level
         remaining_shifts = rank_shifts(shift_group, people)
@@ -265,38 +258,54 @@ def run_shift_algorithm(shift_requirements=None, shift_constraints=None, timeout
             cancel_event=cancel_event
         )
         
-        # Get shift counts from Person objects for display
-
-        return success, people, shift_group
+        # Keep consistent return order throughout the function
+        return success, reason, shift_group, people
 
     with ThreadPoolExecutor() as executor:
-        future = executor.submit(algorithm_worker, shift_requirements, shift_constraints)
+        future = executor.submit(algorithm_worker, shift_group, people)
         try:
-            return future.result(timeout=timeout)
+            success, reason, shift_group, people = future.result(timeout=timeout)
+            
+            if success:
+                # Create web interface dictionaries
+                assignments = {}
+                for day in VALID_DAYS:
+                    assignments[day] = {}
+                    today_shifts = shift_group.get_all_shifts_from_day(day)
+                    for shift in today_shifts:
+                        if shift.is_staffed:
+                            assignments[day][shift.shift_time] = [p.name for p in shift.assigned_people]
+                        else:
+                            assignments[day][shift.shift_time] = []
+                
+                # Create shift_counts dictionary from people
+                shift_counts = {person.name: person.shift_counts for person in people}
+                
+                return success, assignments, reason, shift_counts, people
+            else:
+                return False, None, reason, None, None
+            
         except TimeoutError:
             cancel_event.set()  # Signal algorithm to stop
             return False, None, "Algorithm timed out", None, None
 
 
 if __name__ == '__main__':
-    success, people, shift_group = run_shift_algorithm()
+    success, assignments, reason, shift_counts, people = run_shift_algorithm()
     
     if success:
         print("\n=== Shifts Successfully Assigned ===")
-        for day in VALID_DAYS:
+        for day, day_assignments in assignments.items():
             print(f"{day}")
-            today_shifts = shift_group.get_all_shifts_from_day(day)
-            for shift in today_shifts:
-                if shift.is_staffed:
-                    # Convert Person objects to names when joining
-                    assigned_names = [p.name for p in shift.assigned_people]
-                    print(f"  {shift.shift_time}: {', '.join(assigned_names)}")
+            for shift_time, assigned_people in day_assignments.items():
+                if assigned_people:
+                    print(f"  {shift_time}: {', '.join(assigned_people)}")
                 else:
-                    print(f"  {shift.shift_time}: Unassigned")
+                    print(f"  {shift_time}: Unassigned")
         
         print("\n=== Shifts Assigned Per Person ===")
-        for person in people:
-            print(f"{person.name}: {person.shift_counts} shifts")
+        for person_name, count in shift_counts.items():
+            print(f"{person_name}: {count} shifts")
             
     else:
-        print(f"\nNo solution found: {"reason"}")
+        print(f"\nNo solution found: {reason}")

@@ -4,7 +4,8 @@ from app.scheduler.person import Person
 from app.scheduler.shift import VALID_DAYS, VALID_SHIFT_TIMES
 from app.scheduler.shift_group import ShiftGroup
 from app.scheduler.shift import Shift
-
+from app.scheduler.combo_manager import ComboManager
+from itertools import combinations
 #Create a fixture for a sample shift constraints
 @pytest.fixture
 def sample_shift_group_from_sheet():
@@ -36,29 +37,6 @@ def complete_shift_group():
             group.add_shift(shift)
     return group
 
-
-
-
-# @pytest.fixture
-# def sample_person_dict_from_sheet():
-    # """
-    # Creates as a fixture a dictionary from the first row of data in the Google Sheet
-    # Test shift blocking functionality
-    # Blocked shifts: 
-    #     Last Saturday Night,
-    #     Sunday Morning,
-    #     Monday Noon,
-    #     Tuesday Evening,
-    #     Wednesday Night,
-    #     Thursday Morning,
-    #     Friday Noon,
-    #     Saturday Evening
-    # All the rest of the shifts are available
-    # """
-    # shift_constraint_data = get_google_sheet_data("Shifts", "Test Data - People")
-    # processed_data = parse_shift_constraints(shift_constraint_data)
-    # # Get first person dict and convert to Person object
-    # return processed_data[0]
 
 @pytest.fixture
 def sample_person_from_sheet(sample_shift_group_from_sheet):
@@ -154,3 +132,85 @@ def sample_person(complete_shift_group):
         shift_counts=0,
         night_counts=0
     )
+
+@pytest.fixture
+def sample_people():
+    # Create test people with different constraint scores
+    p1 = Person(
+        "Alice", 
+        unavailable=[], 
+        double_shift=False, 
+        max_shifts=10, 
+        max_nights=2, 
+        are_three_shifts_possible=True,
+        night_and_noon_possible=True
+        )
+
+    p2 = Person(
+        "Bob", 
+        unavailable=[], 
+        double_shift=False, 
+        max_shifts=10, 
+        max_nights=2, 
+        are_three_shifts_possible=True,
+        night_and_noon_possible=True
+        )
+    p3 = Person(
+        "Charlie", 
+        unavailable=[], 
+        double_shift=False, 
+        max_shifts=10, 
+        max_nights=2, 
+        are_three_shifts_possible=True,
+        night_and_noon_possible=True
+        )
+    p4 = Person(
+        "David", 
+        unavailable=[], 
+        double_shift=False, 
+        max_shifts=10, 
+        max_nights=2, 
+        are_three_shifts_possible=True,
+        night_and_noon_possible=True
+        )
+    p5 = Person(
+        "Ethan", 
+        unavailable=[], 
+        double_shift=False, 
+        max_shifts=10, 
+        max_nights=2, 
+        are_three_shifts_possible=True,
+        night_and_noon_possible=True
+        )
+    # Set constraint scores
+    p1.constraints_score = 1.0
+    p2.constraints_score = 1.1
+    p3.constraints_score = 2.0
+    p4.constraints_score = 3.0
+    p5.constraints_score = 6.0
+    
+    return [p1, p2, p3, p4, p5]
+
+@pytest.fixture
+def sample_combination_list_from_people(sample_people):
+    """
+    Output:
+    [
+        [p1, p2],
+        [p1, p3],
+        [p1, p4],
+        [p1, p5],
+        [p2, p3],
+        [p2, p4],
+        [p2, p5],
+        [p3, p4],
+        [p3, p5],
+        [p4, p5]
+    ]
+    """
+    # Create a list of combinations from the sample people
+    return [list(combo) for combo in combinations(sample_people, 2)]
+
+@pytest.fixture
+def combo_manager():
+    return ComboManager()
