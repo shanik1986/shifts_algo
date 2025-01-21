@@ -116,10 +116,13 @@ def backtrack_assign(remaining_shifts: List[Shift], people: List[Person], shift_
     for person in eligible_people:
         person.calculate_constraint_score(current_shift.group)
 
-    # Replace the existing combo sorting logic with:
+    # Get initial sort by constraints from ComboManager
     combo_manager = ComboManager()
-    sorted_combos = combo_manager.sort_combinations(all_combos, current_shift)
-
+    constraint_sorted_combos = combo_manager.sort_combinations(all_combos, current_shift)
+    
+    # Convert to scored format for additional sorting
+    scored_combos = [(sum(p.constraints_score for p in combo), combo) for combo in constraint_sorted_combos]
+    
     # Count double shift opportunities in each combo
     def count_double_shifts(combo, shift, shift_group):
         return sum(1 for person in combo 
@@ -133,20 +136,24 @@ def backtrack_assign(remaining_shifts: List[Shift], people: List[Person], shift_
         {"Shani Keynan", "Yoram"},
         {"Shani Keynan", "Maor"}
     ]
-
     
     # The function returns True if the tested combo has any of the target name pairs
     def has_both_target_names(combo, target_names_list):
         names_in_combo = {p.name for p in combo}
         return any(len(names_in_combo & target_pair) == 2 for target_pair in target_names_list)
 
-    # Sort combinations with priority: both target names first, then double shifts, then constraint score
-    combo_scores = sorted(combo_scores, 
-                         key=lambda x: (
-                             -int(has_both_target_names(x[1], target_names)),  # Both target names first (1 or 0)
-                             -count_double_shifts(x[1], current_shift, shift_group),  # Then double shifts
-                             x[0]  # Then constraint score
-                         ))
+    # Apply additional sorting criteria while maintaining relative constraint order
+    final_sorted_combos = sorted(
+        scored_combos,
+        key=lambda x: (
+            -int(has_both_target_names(x[1], target_names)),  # Target names first (1 or 0)
+            -count_double_shifts(x[1], current_shift, shift_group),  # Then double shifts
+            x[0]  # Finally, maintain constraint score order
+        )
+    )
+
+    # Extract just the combinations without scores
+    sorted_combos = [combo for _, combo in final_sorted_combos]
 
     tested_combos = []
     remaining_combos = [[p.name for p in combo] for combo in sorted_combos]

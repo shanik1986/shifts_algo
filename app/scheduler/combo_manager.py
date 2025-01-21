@@ -39,8 +39,8 @@ class ComboManager:
             score = self._calculate_combo_score(combo)
             scored_combos.append((score, combo))
             
-        # Sort by score (higher scores first)
-        scored_combos.sort(key=lambda x: x[0], reverse=True)
+        # Sort by score (lower scores first)
+        scored_combos.sort(key=lambda x: x[0], reverse=False)
         
         # Return just the combinations without scores
         return [combo for _, combo in scored_combos]
@@ -49,7 +49,10 @@ class ComboManager:
         """
         Calculate the total score for a combination.
         Currently only considers constraint scores.
+        
+        Returns:
+            float: The score for this combination. Returns 0 if no preferences are enabled.
         """
         if self.preferences['constraint_score']:
             return sum(person.constraints_score for person in combo)
-        return 0
+        return 0.0  # Return 0 instead of the combo when constraint score is disabled
