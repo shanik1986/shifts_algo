@@ -26,19 +26,31 @@ def parse_shift_constraints(df: pd.DataFrame, shift_group: ShiftGroup):
     for col in boolean_columns:
         df[col] = df[col].astype(str).str.strip().str.upper() == "TRUE"
 
+    # Create uppercase version of column names for case-insensitive matching
+    column_map = {col.upper(): col for col in df.columns}
+
     processed_data = []
     for _, row in df.iterrows():
+        name = row["Name"]
         unavailable = []
+        
+        print(f"\nProcessing constraints for {name}:")
         
         # Get availability from column names
         for day in VALID_DAYS:
             for time in VALID_SHIFT_TIMES:
-                column_name = f"{day} {time}"  # Column names in sheet match "Day Time" format
-                if column_name in df.columns:  # Only check if column exists
-                    if str(row[column_name]).strip().upper() == "FALSE":
+                column_key = f"{day} {time}".upper()
+                if column_key in column_map:
+                    original_col = column_map[column_key]
+                    value = str(row[original_col]).strip().upper()
+                    print(f"  {original_col}: {value}")
+                    if value == "FALSE":
                         shift = shift_group.get_shift(day, time)
                         if shift:
                             unavailable.append(shift)
+                            print(f"    Added to unavailable list")
+
+        print(f"Final unavailable shifts for {name}: {[f'{s.shift_day} {s.shift_time}' for s in unavailable]}")
 
         # Create Person object
         person = Person(
