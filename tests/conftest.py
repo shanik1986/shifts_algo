@@ -218,16 +218,9 @@ def combo_manager():
 @pytest.fixture
 def target_names_people_with_same_constraint_score():
     """Create test people with specific names for target pairs testing.
-    Matches the structure in ComboManager.target_names:
-    [
-        {"Avishay", "Shani Keynan"},
-        {"Shani Keynan", "Eliran Ron"},
-        {"Shani Keynan", "Nir Ozery"},
-        {"Shani Keynan", "Yoram"},
-        {"Shani Keynan", "Maor"}
-    ]
+    Uses names directly from ComboManager.TARGET_PAIRS and ensures non-target names
+    are distinct by using 'NOT_TARGET_' prefix.
     """
-    # Create test people with exact names from ComboManager's target_names
     default_args = {
         'unavailable': [],
         'double_shift': False,
@@ -237,34 +230,43 @@ def target_names_people_with_same_constraint_score():
         'night_and_noon_possible': True
     }
     
-    avishay = Person("Avishay", **default_args)
-    shani = Person("Shani Keynan", **default_args)
-    eliran = Person("Eliran Ron", **default_args)
-    nir = Person("Nir Ozery", **default_args)
-    yoram = Person("Yoram", **default_args)
-    maor = Person("Maor", **default_args)
-    other = Person("Other Person", **default_args)
+    # Create target pair people from ComboManager
+    target_pair = next(iter(ComboManager.TARGET_PAIRS))
+    first_person = Person(tuple(target_pair)[0], **default_args)
+    second_person = Person(tuple(target_pair)[1], **default_args)
+    
+    # Additional people with names guaranteed not to be in target pairs
+    non_target1 = Person("NOT_TARGET_1", **default_args)
+    non_target2 = Person("NOT_TARGET_2", **default_args)
+    non_target3 = Person("NOT_TARGET_3", **default_args)
     
     # Set same constraint scores initially
-    for p in [avishay, shani, eliran, nir, yoram, maor, other]:
+    people = [first_person, second_person, non_target1, non_target2, non_target3]
+    for p in people:
         p.constraints_score = 1.0
         
-    # Return both the people dict and the target pairs structure
-    return {
-        'people': {
-            'avishay': avishay,
-            'shani': shani,
-            'eliran': eliran,
-            'nir': nir,
-            'yoram': yoram,
-            'maor': maor,
-            'other': other
-        },
-        'target_pairs': [
-            {avishay.name, shani.name},
-            {shani.name, eliran.name},
-            {shani.name, nir.name},
-            {shani.name, yoram.name},
-            {shani.name, maor.name}
-        ]
+    return people
+
+@pytest.fixture
+def double_shift_people():
+    """Create test people with different double shift capabilities"""
+    default_args = {
+        'unavailable': [],
+        'max_shifts': 10,
+        'max_nights': 2,
+        'are_three_shifts_possible': True,
+        'night_and_noon_possible': True
     }
+    
+    # Create people with different double shift settings
+    double1 = Person("DOUBLE_1", double_shift=True, **default_args)
+    double2 = Person("DOUBLE_2", double_shift=True, **default_args)
+    no_double1 = Person("NO_DOUBLE_1", double_shift=False, **default_args)
+    no_double2 = Person("NO_DOUBLE_2", double_shift=False, **default_args)
+    
+    # Set same constraint scores initially
+    people = [double1, double2, no_double1, no_double2]
+    for p in people:
+        p.constraints_score = 1.0
+        
+    return people

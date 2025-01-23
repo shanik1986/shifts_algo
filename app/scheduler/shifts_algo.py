@@ -27,6 +27,28 @@ def debug_log(message):
 
 def validate_remaining_shifts(remaining_shifts, people):
     """Validate remaining shifts have enough eligible people"""
+    # Check if the remaining capacity of all people is enough for the remaining shifts
+    total_remaining_capacity = sum(p.max_shifts - p.shift_counts for p in people)
+    total_needed_capacity = sum(shift.needed for shift in remaining_shifts if not shift.is_staffed)
+    
+    if total_remaining_capacity < total_needed_capacity:
+        print("Validation failed: Not enough remaining capacity for all shifts.")
+        return False
+    
+    #Check if the remainin night capacity is enough for all night shifts
+    total_remaining_night_capacity = sum(p.max_nights - p.night_counts for p in people)
+    total_needed_night_capacity = sum(shift.needed for shift in remaining_shifts if shift.is_night and not shift.is_staffed)
+    if total_remaining_night_capacity < total_needed_night_capacity:
+        print("Validation failed: Not enough remaining night capacity for all night shifts.")
+        return False
+    
+    #Check if the remainin weekend capacity is enough for all weekend shifts
+    total_remaining_weekend_capacity = sum(p.max_weekend_shifts - p.weekend_shifts for p in people)
+    total_needed_weekend_capacity = sum(shift.needed for shift in remaining_shifts if shift.is_weekend_shift and not shift.is_staffed)
+    if total_remaining_weekend_capacity < total_needed_weekend_capacity:
+        print("Validation failed: Not enough remaining weekend capacity for all weekend shifts.")
+        return False
+    
     for shift in remaining_shifts:
         eligible_people = [p for p in people if p.is_eligible_for_shift(shift)]
         if len(eligible_people) < shift.needed:
@@ -75,29 +97,9 @@ def backtrack_assign(remaining_shifts: List[Shift], people: List[Person], shift_
     for person in eligible_people:
         person.calculate_constraint_score(current_shift.group)
 
-    # Get initial sort by constraints and target names from ComboManager
+    # Get sorted combinations from ComboManager
     combo_manager = ComboManager()
-    constraint_sorted_combos = combo_manager.sort_combinations(all_combos, current_shift)
-    
-    # Convert to scored format for additional sorting
-    scored_combos = [(sum(p.constraints_score for p in combo), combo) for combo in constraint_sorted_combos]
-    
-    # Count double shift opportunities in each combo
-    def count_double_shifts(combo, shift, shift_group):
-        return sum(1 for person in combo 
-                  if person.double_shift and shift_group.is_consecutive_shift(person, shift))
-
-    # Apply double shifts sorting while maintaining previous order
-    final_sorted_combos = sorted(
-        scored_combos,
-        key=lambda x: (
-            -count_double_shifts(x[1], current_shift, shift_group),  # More double shifts first
-            x[0]  # Maintain previous ordering
-        )
-    )
-
-    # Extract just the combinations without scores
-    sorted_combos = [combo for _, combo in final_sorted_combos]
+    sorted_combos = combo_manager.sort_combinations(all_combos, current_shift, shift_group)
 
     tested_combos = []
     remaining_combos = [[p.name for p in combo] for combo in sorted_combos]
