@@ -214,3 +214,57 @@ def sample_combination_list_from_people(sample_people):
 @pytest.fixture
 def combo_manager():
     return ComboManager()
+
+@pytest.fixture
+def target_names_people_with_same_constraint_score():
+    """Create test people with specific names for target pairs testing.
+    Matches the structure in ComboManager.target_names:
+    [
+        {"Avishay", "Shani Keynan"},
+        {"Shani Keynan", "Eliran Ron"},
+        {"Shani Keynan", "Nir Ozery"},
+        {"Shani Keynan", "Yoram"},
+        {"Shani Keynan", "Maor"}
+    ]
+    """
+    # Create test people with exact names from ComboManager's target_names
+    default_args = {
+        'unavailable': [],
+        'double_shift': False,
+        'max_shifts': 10,
+        'max_nights': 2,
+        'are_three_shifts_possible': True,
+        'night_and_noon_possible': True
+    }
+    
+    avishay = Person("Avishay", **default_args)
+    shani = Person("Shani Keynan", **default_args)
+    eliran = Person("Eliran Ron", **default_args)
+    nir = Person("Nir Ozery", **default_args)
+    yoram = Person("Yoram", **default_args)
+    maor = Person("Maor", **default_args)
+    other = Person("Other Person", **default_args)
+    
+    # Set same constraint scores initially
+    for p in [avishay, shani, eliran, nir, yoram, maor, other]:
+        p.constraints_score = 1.0
+        
+    # Return both the people dict and the target pairs structure
+    return {
+        'people': {
+            'avishay': avishay,
+            'shani': shani,
+            'eliran': eliran,
+            'nir': nir,
+            'yoram': yoram,
+            'maor': maor,
+            'other': other
+        },
+        'target_pairs': [
+            {avishay.name, shani.name},
+            {shani.name, eliran.name},
+            {shani.name, nir.name},
+            {shani.name, yoram.name},
+            {shani.name, maor.name}
+        ]
+    }

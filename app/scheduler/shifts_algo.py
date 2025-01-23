@@ -9,14 +9,11 @@ sys.path.append(project_root)
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import threading
 from itertools import combinations
-import copy
 from app.scheduler.person import Person
 from app.scheduler.utils import debug_log
 from app.scheduler.constants import DAYS, SHIFTS
 from app.google_sheets.import_sheet_data import (
-    get_fresh_data, 
-    create_shift_group_from_requirements, 
-    parse_shift_constraints
+    get_fresh_data
 )
 from app.scheduler.shift import Shift, VALID_DAYS
 from app.scheduler.shift_group import ShiftGroup
@@ -39,15 +36,6 @@ def validate_remaining_shifts(remaining_shifts, people):
     print("Validation passed: All shifts have enough eligible people.")
     return True
 
-def get_previous_day(days, day):
-    index = days.index(day)
-    return days[index - 1] if index > 0 else None
-
-
-def calculate_person_constraint(person, remaining_shifts, current_assignments):
-    """Calculate constraint score for a person"""
-    return person.calculate_constraint_score(remaining_shifts, current_assignments)
-    
 
 def backtrack_assign(remaining_shifts: List[Shift], people: List[Person], shift_group: ShiftGroup,
                     max_depth: int = 10000, depth: int = 0, 
@@ -87,7 +75,7 @@ def backtrack_assign(remaining_shifts: List[Shift], people: List[Person], shift_
     for person in eligible_people:
         person.calculate_constraint_score(current_shift.group)
 
-    # Get initial sort by constraints from ComboManager
+    # Get initial sort by constraints and target names from ComboManager
     combo_manager = ComboManager()
     constraint_sorted_combos = combo_manager.sort_combinations(all_combos, current_shift)
     
@@ -99,27 +87,12 @@ def backtrack_assign(remaining_shifts: List[Shift], people: List[Person], shift_
         return sum(1 for person in combo 
                   if person.double_shift and shift_group.is_consecutive_shift(person, shift))
 
-    # A list of target name pairs to check for in combos and prioritize
-    target_names = [
-        {"Avishay", "Shani Keynan"},
-        {"Shani Keynan", "Eliran Ron"},
-        {"Shani Keynan", "Nir Ozery"},
-        {"Shani Keynan", "Yoram"},
-        {"Shani Keynan", "Maor"}
-    ]
-    
-    # The function returns True if the tested combo has any of the target name pairs
-    def has_both_target_names(combo, target_names_list):
-        names_in_combo = {p.name for p in combo}
-        return any(len(names_in_combo & target_pair) == 2 for target_pair in target_names_list)
-
-    # Apply additional sorting criteria while maintaining relative constraint order
+    # Apply double shifts sorting while maintaining previous order
     final_sorted_combos = sorted(
         scored_combos,
         key=lambda x: (
-            -int(has_both_target_names(x[1], target_names)),  # Target names first (1 or 0)
-            -count_double_shifts(x[1], current_shift, shift_group),  # Then double shifts
-            x[0]  # Finally, maintain constraint score order
+            -count_double_shifts(x[1], current_shift, shift_group),  # More double shifts first
+            x[0]  # Maintain previous ordering
         )
     )
 
@@ -128,6 +101,7 @@ def backtrack_assign(remaining_shifts: List[Shift], people: List[Person], shift_
 
     tested_combos = []
     remaining_combos = [[p.name for p in combo] for combo in sorted_combos]
+    
     # Try all combinations of eligible people for this shift
     for combo in sorted_combos:
         debug_log(f"================================================")
