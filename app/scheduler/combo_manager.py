@@ -16,7 +16,7 @@ class ComboManager:
     def __init__(self):
         self.preferences = {
             'constraint_score': True,  # Enabled by default
-            'preferred_people': False,  # Enabling target names preference
+            'preferred_people': True,  # Enabling target names preference
             'double_shifts': False
         }
         
