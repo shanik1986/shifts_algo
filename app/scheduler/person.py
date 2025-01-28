@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import List, Tuple, Dict, TYPE_CHECKING
 from app.scheduler.utils import get_adjacent_days, get_adjacent_shifts, is_weekend_shift, debug_log
 from app.scheduler.shift import Shift
-
+from app.scheduler.shift import VALID_SHIFT_TYPES
 if TYPE_CHECKING:
     from app.scheduler.shift_group import ShiftGroup
 
@@ -20,8 +20,10 @@ class Person:
     shift_counts: int = 0
     night_counts: int = 0
     weekend_shifts: int = 0
-    constraints_score: float = 0
+
     
+    # Add new fields for different constraint scores
+    constraint_scores: Dict[str, float] = field(default_factory=dict)
 
     def assign_to_shift(self, shift: Shift) -> None:
         """Assign person to a shift"""
@@ -100,20 +102,81 @@ class Person:
         debug_log(base_msg + "Available - All constraints passed")
         return True
     
-    def calculate_constraint_score(self, shift_group: 'ShiftGroup') -> float:
+    def calculate_constraint_score(self, shift_group: 'ShiftGroup') -> Dict[str, float]:
         """
-        Calculate how constrained this person is for future assignments.
-        This is calculated by the number of eligible shifts divided by the remaining capacity.
+        Calculate separate constraint scores for different types of shifts.
+        Returns a dictionary of scores where higher score means MORE constrained.
         """
-        remaining_capacity = self.max_shifts - self.shift_counts            
         
-        eligible_shift_count = sum(
-            1 for shift in shift_group.shifts
-            if self.is_eligible_for_shift(shift) and not(shift.is_staffed)
+        # Calculate remaining capacities
+        remaining_regular = self.max_shifts - self.shift_counts
+        remaining_nights = self.max_nights - self.night_counts
+        remaining_weekends = self.max_weekend_shifts - self.weekend_shifts
+        
+        # Get unstaffed shifts
+        unstaffed_shifts = [s for s in shift_group.shifts if not s.is_staffed]
+        
+
+        # Count eligible shifts by type
+        eligible_regular = sum(
+            1 for shift in unstaffed_shifts
+            if self.is_eligible_for_shift(shift) and not (shift.is_night or shift.is_weekend_shift)
         )
         
-        self.constraints_score = eligible_shift_count / remaining_capacity if remaining_capacity > 0 else float("inf")
-        return self.constraints_score
+        eligible_nights = sum(
+            1 for shift in unstaffed_shifts
+            if self.is_eligible_for_shift(shift) and shift.is_night
+        )
+        
+        eligible_weekends = sum(
+            1 for shift in unstaffed_shifts
+            if self.is_eligible_for_shift(shift) and shift.is_weekend_shift
+        )
+        
+        # Calculate scores (higher score = more constrained)
+        self.constraint_scores = {
+            'regular': (eligible_regular / remaining_regular) if remaining_regular > 0 else float('inf'),
+            'night': (eligible_nights / remaining_nights) if remaining_nights > 0 else float('inf'),
+            'weekend': (eligible_weekends / remaining_weekends) if remaining_weekends > 0 else float('inf')
+        }
+        
+        # Validate that all required scores exist
+        required_scores = set(VALID_SHIFT_TYPES)
+        missing_scores = required_scores - set(self.constraint_scores.keys())
+        if missing_scores:
+            raise ValueError(f"Missing constraint scores {missing_scores} for person {self.name}")
+        
+        # Validate that all constraint score keys are valid shift types
+        if not all(key in VALID_SHIFT_TYPES for key in self.constraint_scores.keys()):
+            raise ValueError(f"Invalid constraint score keys for person {self.name}: {self.constraint_scores.keys()}")
+        
+        return self.constraint_scores
+    
+    # def calculate_constraint_score(self, shift_group: 'ShiftGroup') -> float:
+    #     """
+    #     Calculate how constrained this person is for future assignments.
+    #     A higher score means LESS constrained (more flexible for assignments).
+    #     Score is lower when eligible_shifts ≈ remaining_capacity, as this means
+    #     the person must take most/all of their eligible shifts.
+    #     """
+    #     remaining_capacity = self.max_shifts - self.shift_counts            
+        
+    #     eligible_shift_count = sum(
+    #         1 for shift in shift_group.shifts
+    #         if self.is_eligible_for_shift(shift) and not(shift.is_staffed)
+    #     )
+        
+    #     # If either value is 0, person is maximally constrained
+    #     if remaining_capacity <= 0 or eligible_shift_count == 0:
+    #         return float("inf")  # least flexible
+            
+    #     # Calculate ratio of larger to smaller number
+    #     ratio = max(eligible_shift_count, remaining_capacity) / min(eligible_shift_count, remaining_capacity)
+        
+    #     # A ratio close to 1 means numbers are similar (more constrained)
+    #     # A larger ratio means more flexibility
+    #     self.constraints_score = ratio - 1  # subtract 1 so a perfect match gives score of 0
+    #     return self.constraints_score
 
     # Print the person's name when the object is printed
     def __repr__(self):
