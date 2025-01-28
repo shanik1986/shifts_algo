@@ -7,10 +7,12 @@ if TYPE_CHECKING:
 # Define the allowed types using Python's Literal type
 DayType = Literal["Last Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 ShiftTimeType = Literal["Morning", "Noon", "Evening", "Night"]
+ShiftType = Literal["regular", "night", "weekend"]
 
 # Get the allowed values from the Literal types
 VALID_DAYS = get_args(DayType)
 VALID_SHIFT_TIMES = get_args(ShiftTimeType)
+VALID_SHIFT_TYPES = get_args(ShiftType)
 
 class Shift:
     def __new__(cls, shift_day: DayType, shift_time: ShiftTimeType, group: 'ShiftGroup', needed: int = 0):
@@ -123,13 +125,19 @@ class Shift:
     
     @property
     def shift_type(self) -> str:
-        """Get the type of the shift"""
+        """Get the type of the shift and validate that shift type exists in the SHIFT_TYPES list"""
+        shift_type = None
         if self.is_night:
-            return "night"
+            shift_type = "night"
         elif self.is_weekend_shift:
-            return "weekend"
+            shift_type = "weekend"
         else:
-            return "regular"
+            shift_type = "regular"
+        
+        if shift_type not in VALID_SHIFT_TYPES:
+            raise ValueError(f"Shift type \"{shift_type}\" is not a valid shift type")
+        
+        return shift_type
 
     def __eq__(self, other: 'Shift') -> bool:
         """Defines how two shifts are compared for equality
