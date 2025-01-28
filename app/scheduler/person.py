@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Tuple, Dict, TYPE_CHECKING
+from typing import List, Tuple, Dict, TYPE_CHECKING, Optional
 from app.scheduler.utils import get_adjacent_days, get_adjacent_shifts, is_weekend_shift, debug_log
 from app.scheduler.shift import Shift
 from app.scheduler.shift import VALID_SHIFT_TYPES
@@ -20,6 +20,7 @@ class Person:
     shift_counts: int = 0
     night_counts: int = 0
     weekend_shifts: int = 0
+    group: Optional['ShiftGroup'] = None
 
     
     # Add new fields for different constraint scores

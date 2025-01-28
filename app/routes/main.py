@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, jsonify
-from app.google_sheets.import_sheet_data import get_fresh_data, parse_shift_requirements
+from app.google_sheets.import_sheet_data import get_fresh_data
 from app.scheduler.shifts_algo import run_shift_algorithm
 from app.scheduler.constants import DAYS, SHIFTS
 
@@ -13,12 +13,11 @@ def index():
 @bp.route('/generate_schedule', methods=['POST'])
 def generate_schedule():
     # Get fresh data using the centralized function
-    shift_group, people = get_fresh_data()
+    shift_group = get_fresh_data()
     
     # Run the algorithm with fresh data
     success, assignments, reason, shift_counts, people = run_shift_algorithm(
         shift_group=shift_group,
-        people=people,
         timeout=TIMEOUT_SECONDS
     )
     

@@ -10,12 +10,19 @@ class ShiftGroup:
     
     def __init__(self):
         self.shifts: List[Shift] = []
+        self.people: List['Person'] = []
     
     def add_shift(self, shift: Shift) -> None:
         """Add a shift to the group"""
         if shift not in self.shifts:
             self.shifts.append(shift)
             shift.group = self  # Set back-reference to this group
+
+    def add_person(self, person: 'Person') -> None:
+        """Add a person to the group"""
+        if person not in self.people:
+            self.people.append(person)
+            person.group = self  # Set back-reference to this group
 
     def get_shift(self, day: str, time: str) -> Optional[Shift]:
         """Get a shift by day and time"""

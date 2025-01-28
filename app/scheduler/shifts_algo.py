@@ -59,7 +59,7 @@ def validate_remaining_shifts(remaining_shifts, people):
     return True
 
 
-def backtrack_assign(remaining_shifts: List[Shift], people: List[Person], shift_group: ShiftGroup,
+def backtrack_assign(remaining_shifts: List[Shift], shift_group: ShiftGroup,
                     max_depth: int = 10000, depth: int = 0, 
                     cancel_event: threading.Event = None) -> Tuple[bool, str]:
     """
@@ -80,7 +80,7 @@ def backtrack_assign(remaining_shifts: List[Shift], people: List[Person], shift_
     debug_log(f"\nDepth {depth}: Trying to assign {current_shift}")
     
     # Get eligible people for this shift
-    eligible_people = [p for p in people if p.is_eligible_for_shift(current_shift)]
+    eligible_people = [p for p in shift_group.people if p.is_eligible_for_shift(current_shift)]
     print(f"\n=== {current_shift}: Trying to assign {current_shift.needed} people ===")
     print(f"Eligible people: {[p.name for p in eligible_people]}")
 
@@ -124,11 +124,11 @@ def backtrack_assign(remaining_shifts: List[Shift], people: List[Person], shift_
         debug_log(f"Removing {current_shift} from remaining shifts")
         debug_log(f"  Remaining shifts: {remaining_shifts}")
         
-        ranked_shifts = [shift.copy_with_group() for shift in shift_group.rank_shifts(people)]
+        ranked_shifts = [shift.copy_with_group() for shift in shift_group.rank_shifts(shift_group.people)]
         
-        if validate_remaining_shifts(ranked_shifts, people):
+        if validate_remaining_shifts(ranked_shifts, shift_group.people):
             result, reason = backtrack_assign(
-                ranked_shifts, people, shift_group, max_depth=max_depth, depth=depth + 1, cancel_event=cancel_event
+                ranked_shifts, shift_group, max_depth=max_depth, depth=depth + 1, cancel_event=cancel_event
             )
             
             if result:
@@ -168,7 +168,7 @@ def backtrack_assign(remaining_shifts: List[Shift], people: List[Person], shift_
 
 
 
-def run_shift_algorithm(shift_group=None, people=None, timeout=None):
+def run_shift_algorithm(shift_group=None, timeout=None):
     """
     Run the algorithm with timeout
     
@@ -182,32 +182,31 @@ def run_shift_algorithm(shift_group=None, people=None, timeout=None):
     """
     cancel_event = threading.Event()
     
-    def algorithm_worker(shift_group, people):
+    def algorithm_worker(shift_group):
         # If no data passed, get fresh data from import_sheet_data
-        if shift_group is None or people is None:
+        if shift_group is None:
             # Keep the same order as our return value
-            shift_group, people = get_fresh_data()
+            shift_group = get_fresh_data()
         
         # Sort shifts based on constraint level
-        remaining_shifts = shift_group.rank_shifts(people)
+        remaining_shifts = shift_group.rank_shifts(shift_group.people)
         
         # Run the backtracking assignment
         max_depth = 10000
         success, reason = backtrack_assign(
             remaining_shifts, 
-            people,
             shift_group,
             max_depth=max_depth,
             cancel_event=cancel_event
         )
         
         # Keep consistent return order throughout the function
-        return success, reason, shift_group, people
+        return success, reason, shift_group
 
     with ThreadPoolExecutor() as executor:
-        future = executor.submit(algorithm_worker, shift_group, people)
+        future = executor.submit(algorithm_worker, shift_group)
         try:
-            success, reason, shift_group, people = future.result(timeout=timeout)
+            success, reason, shift_group = future.result(timeout=timeout)
             
             if success:
                 # Create web interface dictionaries
@@ -222,9 +221,9 @@ def run_shift_algorithm(shift_group=None, people=None, timeout=None):
                             assignments[day][shift.shift_time] = []
                 
                 # Create shift_counts dictionary from people
-                shift_counts = {person.name: person.shift_counts for person in people}
+                shift_counts = {person.name: person.shift_counts for person in shift_group.people}
                 
-                return success, assignments, reason, shift_counts, people
+                return success, assignments, reason, shift_counts, shift_group.people
             else:
                 return False, None, reason, None, None
             

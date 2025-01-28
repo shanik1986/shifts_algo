@@ -1,5 +1,5 @@
 import pytest
-from app.google_sheets.import_sheet_data import get_google_sheet_data, parse_shift_constraints, create_shift_group_from_requirements
+from app.google_sheets.import_sheet_data import get_google_sheet_data, get_fresh_data, parse_people_data
 from app.scheduler.person import Person
 from app.scheduler.shift import VALID_DAYS, VALID_SHIFT_TIMES
 from app.scheduler.shift_group import ShiftGroup
@@ -10,7 +10,7 @@ from itertools import combinations
 @pytest.fixture
 def sample_shift_group_from_sheet():
     """
-    Create a fixture for shift requirements from the Google Sheet.
+    Create a fixture for shift a shift group with shift requireements and prople from the Google Sheet.
     The requirements are:
         Last Saturday Night: 0
         All shifts on Sunday and Monday: 3
@@ -23,8 +23,9 @@ def sample_shift_group_from_sheet():
         Saturday Morning, Noon, Evening: 3
         Saturday Night: 0
     """
-    shift_requirements_data = get_google_sheet_data("Shifts", "Test Data - Shift Requirements")
-    shift_group = create_shift_group_from_requirements(shift_requirements_data)
+    shift_group = get_fresh_data(
+        shift_needs_sheet_name="Test Data - Shift Requirements", 
+        people_sheet_name="Test Data - People")
     return shift_group
 
 @pytest.fixture
@@ -53,10 +54,10 @@ def sample_person_from_sheet(sample_shift_group_from_sheet):
         Saturday Evening
     All the rest of the shifts are available
     """
-    shift_constraint_data = get_google_sheet_data("Shifts", "Test Data - People")
-    processed_data = parse_shift_constraints(shift_constraint_data, sample_shift_group_from_sheet)
+    people_sheet_name = "Test Data - People"
+    people = parse_people_data(get_google_sheet_data("Shifts", people_sheet_name), sample_shift_group_from_sheet)
     # Get first person dict and convert to Person object
-    return processed_data[0]
+    return people[0]
 
 #Create a fixture for empty current assignments
 @pytest.fixture
