@@ -17,11 +17,12 @@ class ComboManager:
         self.preferences = {
             'constraint_score': True,  # Enabled by default
             'preferred_people': False,  # Enabling target names preference
-            'double_shifts': False
+            'double_shifts': True
         }
         
         # Use the class-defined target pairs
         self.target_names = self.TARGET_PAIRS
+        self.current_shift = None  # Add this to store current shift
         
     def sort_combinations(self, 
                          combinations: List[List[Person]], 
@@ -45,6 +46,9 @@ class ComboManager:
         if not combinations:
             raise ValueError("Cannot sort empty combinations list - this indicates a problem in the algorithm")
             
+        # Store current shift for use in _calculate_constraint_score
+        self.current_shift = current_shift
+            
         def get_score_key(combo):
             """Generate a scoring tuple for sorting"""
             combo = list(combo) if isinstance(combo, tuple) else combo
@@ -53,7 +57,7 @@ class ComboManager:
             target_names_score = int(self._has_target_names(combo)) if self.preferences['preferred_people'] else 0
             
             # Calculate constraint score
-            constraint_score = self._calculate_constraint_score(combo)
+            constraint_score = self._calculate_constraint_score(combo, current_shift.shift_type)
             
             # Calculate double shifts score
             double_shifts_score = self._count_double_shifts(combo, current_shift, shift_group) if self.preferences['double_shifts'] and current_shift and shift_group else 0
@@ -67,11 +71,18 @@ class ComboManager:
         # Sort combinations using the score tuple as key
         return sorted(combinations, key=get_score_key)
     
-    def _calculate_constraint_score(self, combo: List[Person]) -> float:
+    def _calculate_constraint_score(self, combo: List[Person], shift_type: str) -> float:
         """Calculate the total constraint score for a combination."""
-        if self.preferences['constraint_score']:
-            return sum(person.constraints_score for person in combo)
-        return 0.0
+        if not self.preferences['constraint_score'] or not self.current_shift:
+            return 0.0
+        
+        score_type = shift_type
+
+        for person in combo:
+            try:
+                return sum(p.constraint_scores[score_type] for p in combo)
+            except KeyError:
+                raise KeyError(f"Missing {score_type} constraint score for person {person.name}")
 
     def _has_target_names(self, combo: List[Person]) -> bool:
         """Check if the combination contains any of the target name pairs."""
