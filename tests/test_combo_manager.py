@@ -18,52 +18,116 @@ def test_empty_combinations(combo_manager):
     with pytest.raises(ValueError, match="Cannot sort empty combinations list"):
         combo_manager.sort_combinations([])
 
-def test_constraint_score_sorting(combo_manager, sample_combination_list_from_people):
+def test_constraint_sum_score(combo_manager, sample_combination_list_from_people, sample_people):
     """
-    Test that combinations are sorted by total constraint score.
-    The expected order is:
-    [
-        [p4, p5], # 9
-        [p3, p5], # 8
-        [p2, p5], # 7.1
-        [p1, p5], # 7
-        [p3, p4], # 5
-        [p2, p4], # 4.1
-        [p1, p4], # 4
-        [p2, p3], # 3.1
-        [p1, p3], # 3
-        [p1, p2]  # 2.1
+    Test that the constraint sum score is calculated correctly.
+    """
+    p1, p2, p3, p4, p5 = sample_people
+
+    combinations_with_expected = [
+        ([p4, p5], {'regular': 9.0, 'night': 11.0, 'weekend': 0.3}),
+        ([p3, p5], {'regular': 8.0, 'night': 9.0, 'weekend': 0.4}),
+        ([p2, p5], {'regular': 7.1, 'night': 8.0, 'weekend': 0.5}),
+        ([p1, p5], {'regular': 7.0, 'night': 7.0, 'weekend': 0.6}),
+        ([p3, p4], {'regular': 5.0, 'night': 8.0, 'weekend': 0.5}),
+        ([p2, p4], {'regular': 4.1, 'night': 7.0, 'weekend': 0.6}),
+        ([p1, p4], {'regular': 4.0, 'night': 6.0, 'weekend': 0.7}),
+        ([p2, p3], {'regular': 3.1, 'night': 5.0, 'weekend': 0.7}),
+        ([p1, p3], {'regular': 3.0, 'night': 4.0, 'weekend': 0.8}),
+        ([p1, p2], {'regular': 2.1, 'night': 3.0, 'weekend': 0.9})
     ]
-    """
-    sorted_combos = combo_manager.sort_combinations(sample_combination_list_from_people)
     
-    # The combinations should be sorted by ascending constraint score
+    for combo, expected_scores in combinations_with_expected:
+        for shift_type in ['regular', 'night', 'weekend']:
+            actual_score = sum(p.constraint_scores[shift_type] for p in combo)
+            assert actual_score == pytest.approx(expected_scores[shift_type]), \
+                f"For {shift_type} shift, expected score {expected_scores[shift_type]} but got {actual_score} " \
+                f"for combination {[p.name for p in combo]}"
+
+
+def test_constraint_score_sorting(combo_manager, sample_combination_list_from_people, sample_people):
+    """
+    Test that combinations are sorted by constraint score based on shift type.
+    Tests regular, night, and weekend shift sorting separately.
+    """
+    group = ShiftGroup()
+    # Test regular shift sorting
+    regular_shift = Shift("Monday", "Morning", group=group)
+    night_shift = Shift("Monday", "Night", group=group)
+    weekend_shift = Shift("Saturday", "Morning", group=group)
+
+    group.shifts = [regular_shift, night_shift, weekend_shift]
+    for p in sample_people:
+        p.calculate_constraint_score(group)
+
+
+
+    sorted_regular = combo_manager.sort_combinations(
+        sample_combination_list_from_people,
+        current_shift=regular_shift
+    )
+    
     previous_score = -float('inf')
-    for combo in sorted_combos:
-        current_score = sum(person.constraints_score for person in combo)
-        assert current_score >= previous_score, "Combinations not properly sorted by constraint score"
+    for combo in sorted_regular:
+        current_score = sum(p.constraint_scores['regular'] for p in combo)
+        assert current_score >= previous_score, "Combinations not properly sorted by regular constraint score"
+        previous_score = current_score
+
+    # Test night shift sorting
+    sorted_night = combo_manager.sort_combinations(
+        sample_combination_list_from_people,
+        current_shift=night_shift
+    )
+    
+    previous_score = -float('inf')
+    for combo in sorted_night:
+        current_score = sum(p.constraint_scores['night'] for p in combo)
+        assert current_score >= previous_score, "Combinations not properly sorted by night constraint score"
+        previous_score = current_score
+
+    # Test weekend shift sorting
+    sorted_weekend = combo_manager.sort_combinations(
+        sample_combination_list_from_people,
+        current_shift=weekend_shift
+    )
+    
+    previous_score = -float('inf')
+    for combo in sorted_weekend:
+        current_score = sum(p.constraint_scores['weekend'] for p in combo)
+        assert current_score >= previous_score, "Combinations not properly sorted by weekend constraint score"
         previous_score = current_score
 
 def test_disable_constraint_score(combo_manager, sample_people):
-    """Test that disabling constraint score preference maintains original order"""
+    """
+    Test that disabling constraint score preference maintains original order. The constraint scores are:
+    p1: {'regular': 1.0, 'night': 1.0, 'weekend': 0.5}
+    p2: {'regular': 1.1, 'night': 2.0, 'weekend': 0.4}
+    p3: {'regular': 2.0, 'night': 3.0, 'weekend': 0.3}
+    p4: {'regular': 3.0, 'night': 5.0, 'weekend': 0.9}
+    p5: {'regular': 6.0, 'night': 6.0, 'weekend': 0.10}
+    
+    """
+    # Create a regular shift
+    regular_shift = Shift("Monday", "Morning", group=ShiftGroup())
+    
     p1, p2, p3, p4, p5 = sample_people
     
     combinations = [
-        [p4, p5], # 9
-        [p3, p5], # 8
-        [p2, p5], # 7.1
-        [p1, p5], # 7
-        [p3, p4], # 5
-        [p2, p4], # 4.1
-        [p1, p4], # 4
-        [p2, p3], # 3.1
-        [p1, p3], # 3
-        [p1, p2]  # 2.1
+        [p4, p5], # {regular: 9.0, night: 11.0, weekend: 0.3}
+        [p3, p5], # {regular: 8.0, night: 9.0, weekend: 0.4}
+        [p2, p5], # {regular: 7.1, night: 8.0, weekend: 0.5}
+        [p1, p5], # {regular: 7.0, night: 7.0, weekend: 0.6}
+        [p3, p4], # {regular: 5.0, night: 8.0, weekend: 0.5}
+        [p2, p4], # {regular: 4.1, night: 7.0, weekend: 0.6}
+        [p1, p4], # {regular: 4.0, night: 6.0, weekend: 0.7}
+        [p2, p3], # {regular: 3.1, night: 5.0, weekend: 0.7}
+        [p1, p3], # {regular: 3.0, night: 4.0, weekend: 0.8}
+        [p1, p2]  # {regular: 2.1, night: 3.0, weekend: 0.9}
     ]
     
     # Disable constraint score preference
     combo_manager.preferences['constraint_score'] = False
-    sorted_combos = combo_manager.sort_combinations(combinations)
+    sorted_combos = combo_manager.sort_combinations(combinations, current_shift=regular_shift)
     
     # Order should remain unchanged when constraint score is disabled
     assert sorted_combos == combinations 
@@ -74,6 +138,10 @@ def test_target_names_structure(combo_manager, target_names_people_with_same_con
 
 def test_target_names_sorting(combo_manager, target_names_people_with_same_constraint_score):
     """Test that combinations with target pairs are prioritized"""
+
+    # Create a regular shift
+    regular_shift = Shift("Monday", "Morning", group=ShiftGroup())
+    
     # Enable target pairs preference
     combo_manager.preferences['preferred_people'] = True
     
@@ -92,13 +160,16 @@ def test_target_names_sorting(combo_manager, target_names_people_with_same_const
     ][:2]
     
     combinations = [non_target_combo, target_pair_combo]
-    sorted_combos = combo_manager.sort_combinations(combinations)
+    sorted_combos = combo_manager.sort_combinations(combinations, current_shift=regular_shift)
     
     assert sorted_combos[0] == target_pair_combo
     assert sorted_combos[1] == non_target_combo
 
 def test_target_pairs_vs_non_pairs(combo_manager, target_names_people_with_same_constraint_score):
     """Test that any target pair comes before non-target pairs"""
+    # Create a regular shift
+    regular_shift = Shift("Monday", "Morning", group=ShiftGroup())
+    
     # Enable target pairs preference
     combo_manager.preferences['preferred_people'] = True
     
@@ -117,12 +188,15 @@ def test_target_pairs_vs_non_pairs(combo_manager, target_names_people_with_same_
     ][:2]
     
     combinations = [non_target_combo, target_pair_combo]
-    sorted_combos = combo_manager.sort_combinations(combinations)
+    sorted_combos = combo_manager.sort_combinations(combinations, current_shift=regular_shift)
     
     assert sorted_combos[1] == non_target_combo
 
 def test_combined_scoring(combo_manager, target_names_people_with_same_constraint_score):
     """Test combination of target pairs and constraint scores"""
+    # Create a regular shift
+    regular_shift = Shift("Monday", "Morning", group=ShiftGroup())
+    
     # Enable target pairs preference
     combo_manager.preferences['preferred_people'] = True
     
@@ -147,7 +221,7 @@ def test_combined_scoring(combo_manager, target_names_people_with_same_constrain
         p.constraints_score = 1.0  # Better constraints but no target pair
     
     combinations = [target_pair_combo, non_target_combo]
-    sorted_combos = combo_manager.sort_combinations(combinations)
+    sorted_combos = combo_manager.sort_combinations(combinations, current_shift=regular_shift)
     
     # Target pair should still come first despite higher constraint score
     assert sorted_combos[0] == target_pair_combo
@@ -155,6 +229,9 @@ def test_combined_scoring(combo_manager, target_names_people_with_same_constrain
 
 def test_constraint_score_sorting_no_targets(combo_manager, target_names_people_with_same_constraint_score):
     """Test constraint score sorting when no target pairs are present"""
+    # Create a regular shift
+    regular_shift = Shift("Monday", "Morning", group=ShiftGroup())
+    
     # Disable target pairs preference to ensure it doesn't interfere
     combo_manager.preferences['preferred_people'] = False
     
@@ -175,7 +252,7 @@ def test_constraint_score_sorting_no_targets(combo_manager, target_names_people_
         p.constraints_score = 1.0  # Lower (worse) scores
     
     combinations = [second_combo, first_combo]
-    sorted_combos = combo_manager.sort_combinations(combinations)
+    sorted_combos = combo_manager.sort_combinations(combinations, current_shift=regular_shift)
     
     assert sorted_combos[0] == first_combo  # Higher scores should come first
     assert sorted_combos[1] == second_combo  # Lower scores should come last
@@ -183,6 +260,9 @@ def test_constraint_score_sorting_no_targets(combo_manager, target_names_people_
 def test_target_pairs_ignored_constraint_score_respected(combo_manager, target_names_people_with_same_constraint_score):
     """Test that when target pairs preference is disabled but constraint scoring is enabled,
     combinations are sorted by constraint scores regardless of target pair status"""
+    # Create a regular shift
+    regular_shift = Shift("Monday", "Morning", group=ShiftGroup())
+    
     # Create two non-target people with better constraint scores
     default_args = {
         'unavailable': [],
@@ -202,15 +282,14 @@ def test_target_pairs_ignored_constraint_score_respected(combo_manager, target_n
     
     # Create non-target combo
     better_scoring_combo = [
-        Person("NOT_TARGET_1", **default_args),
-        Person("NOT_TARGET_2", **default_args)
+        Person("NOT_TARGET_1", **default_args, constraint_scores={'regular': -float('inf'), 'night': 1.0, 'weekend': 0.5}),
+        Person("NOT_TARGET_2", **default_args, constraint_scores={'regular': -float('inf'), 'night': 1.0, 'weekend': 0.5})
     ]
     
     # Set constraint scores
     for p in target_pair_combo:
-        p.constraints_score = 3.0  # Higher scores = less constrained
-    for p in better_scoring_combo:
-        p.constraints_score = 1.0  # Lower scores = more constrained
+        p.constraint_scores = {'regular': 3.0, 'night': 1.0, 'weekend': 0.5}  # Higher scores = less constrained
+
     
     combinations = [better_scoring_combo, target_pair_combo]
     
@@ -218,7 +297,7 @@ def test_target_pairs_ignored_constraint_score_respected(combo_manager, target_n
     combo_manager.preferences['preferred_people'] = False
     combo_manager.preferences['constraint_score'] = True
     
-    sorted_combos = combo_manager.sort_combinations(combinations)
+    sorted_combos = combo_manager.sort_combinations(combinations, current_shift=regular_shift)
     
     # More constrained (lower score) should come first
     assert [p.name for p in sorted_combos[0]] == [p.name for p in better_scoring_combo]  # Lower scores first
@@ -316,6 +395,9 @@ def test_double_shift_with_non_consecutive_shifts(combo_manager, double_shift_pe
 
 def test_preferences_disabled(combo_manager, target_names_people_with_same_constraint_score):
     """Test sorting behavior when preferences are disabled"""
+    # Create a regular shift
+    regular_shift = Shift("Monday", "Morning", group=ShiftGroup())
+    
     people = target_names_people_with_same_constraint_score
     target_pair = next(iter(ComboManager.TARGET_PAIRS))
     
@@ -341,7 +423,7 @@ def test_preferences_disabled(combo_manager, target_names_people_with_same_const
     combo_manager.preferences['constraint_score'] = False
     
     combinations = [target_pair_combo, non_target_combo]
-    sorted_combos = combo_manager.sort_combinations(combinations)
+    sorted_combos = combo_manager.sort_combinations(combinations, current_shift=regular_shift)
     
     # Should maintain original order when preferences are disabled
     assert sorted_combos == combinations 

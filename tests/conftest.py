@@ -183,11 +183,11 @@ def sample_people():
         night_and_noon_possible=True
         )
     # Set constraint scores
-    p1.constraints_score = 1.0
-    p2.constraints_score = 1.1
-    p3.constraints_score = 2.0
-    p4.constraints_score = 3.0
-    p5.constraints_score = 6.0
+    p1.constraint_scores = {'regular': 1.0, 'night': 1.0, 'weekend': 0.5}
+    p2.constraint_scores = {'regular': 1.1, 'night': 2.0, 'weekend': 0.4}
+    p3.constraint_scores = {'regular': 2.0, 'night': 3.0, 'weekend': 0.3}
+    p4.constraint_scores = {'regular': 3.0, 'night': 5.0, 'weekend': 0.2}
+    p5.constraint_scores = {'regular': 6.0, 'night': 6.0, 'weekend': 0.10}
     
     return [p1, p2, p3, p4, p5]
 
@@ -243,7 +243,7 @@ def target_names_people_with_same_constraint_score():
     # Set same constraint scores initially
     people = [first_person, second_person, non_target1, non_target2, non_target3]
     for p in people:
-        p.constraints_score = 1.0
+        p.constraint_scores = {'regular': 1.0, 'night': 1.0, 'weekend': 0.5}
         
     return people
 
@@ -267,6 +267,6 @@ def double_shift_people():
     # Set same constraint scores initially
     people = [double1, double2, no_double1, no_double2]
     for p in people:
-        p.constraints_score = 1.0
+        p.constraint_scores = {'regular': 1.0, 'night': 1.0, 'weekend': 0.5}
         
     return people
