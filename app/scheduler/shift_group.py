@@ -50,11 +50,11 @@ class ShiftGroup:
         return False
     
     def is_noon_after_night(self, person: 'Person', shift: Shift) -> bool:
-        # """Check if assignment will violate noon after night constraint"""
-        # if shift.is_noon and shift.previous_day:
-        #     return self.is_person_assigned(person, shift.previous_day, "Night")
-        # elif shift.is_night and shift.next_day:
-        #     return self.is_person_assigned(person, shift.next_day, "Noon")
+        """Check if assignment will violate noon after night constraint"""
+        if shift.is_noon and shift.previous_day:
+            return self.is_person_assigned(person, shift.previous_day, "Night")
+        elif shift.is_night and shift.next_day:
+            return self.is_person_assigned(person, shift.next_day, "Noon")
         return False
     
     def is_consecutive_shift(self, person: 'Person', shift: Shift) -> bool:
