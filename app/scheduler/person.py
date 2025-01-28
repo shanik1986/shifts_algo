@@ -141,16 +141,8 @@ class Person:
         }
         
         # Validate that all required scores exist
-        required_scores = set(VALID_SHIFT_TYPES)
-        missing_scores = required_scores - set(self.constraint_scores.keys())
-        if missing_scores:
-            raise ValueError(f"Missing constraint scores {missing_scores} for person {self.name}")
-        
-        # Validate that all constraint score keys are valid shift types
-        if not all(key in VALID_SHIFT_TYPES for key in self.constraint_scores.keys()):
-            raise ValueError(f"Invalid constraint score keys for person {self.name}: {self.constraint_scores.keys()}")
-        
-        return self.constraint_scores
+        self._validate_constraint_scores(self.constraint_scores)
+
     
     # def calculate_constraint_score(self, shift_group: 'ShiftGroup') -> float:
     #     """
@@ -181,3 +173,15 @@ class Person:
     # Print the person's name when the object is printed
     def __repr__(self):
         return f"Person(name={self.name})"
+
+    def _validate_constraint_scores(self, scores: Dict[str, float]) -> None:
+        """Validate constraint scores"""
+        # Check for missing scores
+        required_scores = set(VALID_SHIFT_TYPES)
+        missing_scores = required_scores - set(scores.keys())
+        if missing_scores:
+            raise ValueError(f"Missing constraint scores {missing_scores} for person {self.name}")
+        
+        # Check for invalid score types
+        if not all(key in VALID_SHIFT_TYPES for key in scores.keys()):
+            raise ValueError(f"Invalid constraint score keys for person {self.name}: {scores.keys()}")
