@@ -120,6 +120,16 @@ class Shift:
     def is_night(self) -> bool:
         """Check if this is a night shift"""
         return self.shift_time == "Night"
+    
+    @property
+    def shift_type(self) -> str:
+        """Get the type of the shift"""
+        if self.is_night:
+            return "night"
+        elif self.is_weekend_shift:
+            return "weekend"
+        else:
+            return "regular"
 
     def __eq__(self, other: 'Shift') -> bool:
         """Defines how two shifts are compared for equality
