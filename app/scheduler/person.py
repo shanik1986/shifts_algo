@@ -142,6 +142,7 @@ class Person:
         
         # Validate that all required scores exist
         self._validate_constraint_scores(self.constraint_scores)
+        return self.constraint_scores
 
     
     # def calculate_constraint_score(self, shift_group: 'ShiftGroup') -> float:

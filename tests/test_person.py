@@ -167,6 +167,7 @@ def test_calculate_constraint_score(sample_person):
     Sample person relevant attributes:
         Max shifts: 5
         Max nights: 2
+        Max weekend shifts: 1
         Night + Noon possible: True
         Double shift: False
 
@@ -182,32 +183,77 @@ def test_calculate_constraint_score(sample_person):
         ]
     """
     group = ShiftGroup()
-    group.add_shift(Shift("Sunday", "Morning", group=group, needed=1))
-    group.add_shift(Shift("Sunday", "Noon", group=group, needed=1))
-    group.add_shift(Shift("Sunday", "Evening", group=group, needed=1))
-    group.add_shift(Shift("Monday", "Morning", group=group, needed=1))
-    group.add_shift(Shift("Monday", "Evening", group=group, needed=1))
     
-    #Assign to Sunday Night
-    sample_person.assign_to_shift(Shift("Sunday", "Night", group=group, needed=1))
+    # Add regular shifts
+    group.add_shift(Shift("Monday", "Morning", needed=1, group=group))
+    group.add_shift(Shift("Tuesday", "Morning", needed=1, group=group))
+    group.add_shift(Shift("Sunday", "Morning", needed=1, group=group))
     
+    # Add night shifts  
+    group.add_shift(Shift("Monday", "Night", needed=1, group=group))
+    group.add_shift(Shift("Tuesday", "Night", needed=1, group=group))
+    group.add_shift(Shift("Wednesday", "Night", needed=1, group=group))
+    
+    # Add weekend shifts
+    group.add_shift(Shift("Saturday", "Morning", needed=1, group=group))
+    group.add_shift(Shift("Friday", "Evening", needed=1, group=group))
 
-    # Calculate initial constraint score
-    assert sample_person.calculate_constraint_score(group) == 0.5
+    # Initial state:
+    scores = sample_person.calculate_constraint_score(group)
+    assert scores['regular'] == 2/5  # 2 eligible regular shifts / 5 max shifts
+    assert scores['night'] == 2/2    # 2 eligible night shifts / 2 max nights
+    assert scores['weekend'] == 2/1   # 2 eligible weekend shift / 1 max weekend
+
+    # Test error handling by mocking calculate_constraint_score to return invalid scores
+    def mock_calculate_scores_missing(self):
+        return {'night': 0.5, 'weekend': 0.5}  # Missing 'regular'
     
-    # Assign to Monday evening to reduce constraint score
-    sample_person.assign_to_shift(Shift("Monday", "Evening", group=group))
+    original_method = Person.calculate_constraint_score
+    Person.calculate_constraint_score = mock_calculate_scores_missing
+    with pytest.raises(ValueError, match=f"Missing constraint scores {{'regular'}} for person {sample_person.name}"):
+        sample_person._validate_constraint_scores(mock_calculate_scores_missing(sample_person))
     
-    # Calculate new constraint score
-    assert sample_person.calculate_constraint_score(group) == (1/3)
+    def mock_calculate_scores_invalid(self):
+        return {
+            'regular': 0.5,
+            'night': 0.5,
+            'weekend': 0.5,
+            'invalid_type': 0.5
+        }
     
-    # Assign to Thursday morning, Saturday morning and Saturday night to make the person completely unavailable
-    sample_person.assign_to_shift(Shift("Saturday", "Morning", group=group))
-    assert sample_person.calculate_constraint_score(group) == (1/2)
+    Person.calculate_constraint_score = mock_calculate_scores_invalid
+    with pytest.raises(ValueError, match=f"Invalid constraint score keys for person {sample_person.name}"):
+        sample_person._validate_constraint_scores(mock_calculate_scores_invalid(sample_person))
     
-    sample_person.assign_to_shift(Shift("Saturday", "Night", group=group))
-    assert sample_person.calculate_constraint_score(group) == (1)
-    
-    sample_person.assign_to_shift(Shift("Thursday", "Morning", group=group))
-    assert sample_person.calculate_constraint_score(group) == float("inf")
+    # Restore original method
+    Person.calculate_constraint_score = original_method
+
+    # Reset constraint scores for remaining tests
+    sample_person.constraint_scores = {}
+    scores = sample_person.calculate_constraint_score(group)
+
+    # Assign a regular shift
+    sample_person.assign_to_shift(Shift("Monday", "Morning", group=group))
+    scores = sample_person.calculate_constraint_score(group)
+    assert scores['regular'] == 1/4  # 1 eligible regular shift / 4 remaining shifts
+
+    # Assign a night shift
+    sample_person.assign_to_shift(Shift("Monday", "Night", group=group))
+    scores = sample_person.calculate_constraint_score(group)
+    assert scores['night'] == 1/1    # 1 eligible night shift / 1 remaining night
+
+    # Assign a weekend shift
+    sample_person.assign_to_shift(Shift("Friday", "Evening", group=group))
+    scores = sample_person.calculate_constraint_score(group)
+    assert scores['weekend'] == float('inf')  # No more weekend capacity
+
+    # Fill up night shifts
+    sample_person.assign_to_shift(Shift("Tuesday", "Night", group=group))
+    scores = sample_person.calculate_constraint_score(group)
+    assert scores['night'] == float('inf')  # No more night capacity
+
+    # Fill up regular shifts
+    sample_person.assign_to_shift(Shift("Tuesday", "Morning", group=group))
+    scores = sample_person.calculate_constraint_score(group)
+    assert scores['regular'] == float('inf')  # No more regular capacity
    
