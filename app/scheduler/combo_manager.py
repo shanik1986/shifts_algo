@@ -6,11 +6,11 @@ from app.scheduler.shift import Shift
 class ComboManager:
     # Define target pairs as a class attribute
     TARGET_PAIRS = [
-        {'pair': {"Avishay", "Shani Keynan"}, 'weight': 3},
-        {'pair': {"Shani Keynan", "Dubi Friger"}, 'weight': -1},
-        {'pair': {"Shani Keynan", "Nir Ozery"}, 'weight': 2},
-        # {'pair': {"Shani Keynan", "Yoram"}, 'weight': -1},
-        # {'pair': {"Shani Keynan", "Maor"}, 'weight': -1},
+        {'pair': {"Avishay", "Shani Keynan"}, 'weight': 5},
+        {'pair': {"Shani Keynan", "Dubi Friger"}, 'weight': -5},
+        # {'pair': {"Shani Keynan", "Nir Ozery"}, 'weight': 3},
+        # {'pair': {"Shani Keynan", "Amir Foran"}, 'weight': -3},
+        # {'pair': {"Shani Keynan", "Mordechai"}, 'weight': -2},
     ]
 
     def __init__(self):
@@ -54,7 +54,7 @@ class ComboManager:
             combo = list(combo) if isinstance(combo, tuple) else combo
             
             # Calculate target names score (0 or 1)
-            target_names_score = int(self._calculate_target_names_score(combo)) if self.preferences['preferred_people'] else 0
+            target_names_score = self._calculate_target_names_score(combo) if self.preferences['preferred_people'] else 0
             
             # Calculate constraint score
             constraint_score = self._calculate_constraint_score(combo, current_shift.shift_type)
@@ -95,7 +95,6 @@ class ComboManager:
         if self.preferences['preferred_people']:
             for target in self.target_names:
                 if len(names_in_combo & target['pair']) == 2:
-                    # Return negative weight so higher weights get lower scores
                     sum += target['weight']
         return sum
 
