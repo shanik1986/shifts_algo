@@ -94,9 +94,9 @@ class ShiftGroup:
         return count
 
     def check_all_constraints(self, person: 'Person', shift: Shift, 
-                            allow_consecutive: bool = False, 
-                            allow_three_shifts: bool = False, 
-                            allow_night_noon: bool = False) -> Tuple[bool, str]:
+                            allow_consecutive: bool, 
+                            allow_three_shifts: bool, 
+                            allow_night_noon: bool) -> Tuple[bool, str]:
         """
         Check all group-based constraints for a person and shift.
         Returns (is_allowed, reason_if_not_allowed)
