@@ -154,8 +154,8 @@ def backtrack_assign(remaining_shifts: List[Shift], shift_group: ShiftGroup,
 
         debug_log(f"State after undoing {current_shift}:")
         debug_log(f"  Remaining shifts: {remaining_shifts}")
-        debug_log(f"  People's shift counts: {[(p.name, p.shift_counts) for p in people]}")
-        debug_log(f"  People's night counts: {[(p.name, p.night_counts) for p in people]}")
+        debug_log(f"  People's shift counts: {[(p.name, p.shift_counts) for p in shift_group.people]}")
+        debug_log(f"  People's night counts: {[(p.name, p.night_counts) for p in shift_group.people]}")
         
     debug_log(f"No valid combination found for {current_shift}. Backtracking...")
     debug_log("=============================================================================")

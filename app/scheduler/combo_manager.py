@@ -6,11 +6,11 @@ from app.scheduler.shift import Shift
 class ComboManager:
     # Define target pairs as a class attribute
     TARGET_PAIRS = [
-        {"Avishay", "Shani Keynan"},
-        # {"Shani Keynan", "Eliran Ron"},
-        {"Shani Keynan", "Nir Ozery"},
-        # {"Shani Keynan", "Yoram"},
-        # {"Shani Keynan", "Maor"}
+        {'pair': {"Avishay", "Shani Keynan"}, 'weight': 3},
+        {'pair': {"Shani Keynan", "Dubi Friger"}, 'weight': -1},
+        {'pair': {"Shani Keynan", "Nir Ozery"}, 'weight': 2},
+        # {'pair': {"Shani Keynan", "Yoram"}, 'weight': -1},
+        # {'pair': {"Shani Keynan", "Maor"}, 'weight': -1},
     ]
 
     def __init__(self):
@@ -54,7 +54,7 @@ class ComboManager:
             combo = list(combo) if isinstance(combo, tuple) else combo
             
             # Calculate target names score (0 or 1)
-            target_names_score = int(self._has_target_names(combo)) if self.preferences['preferred_people'] else 0
+            target_names_score = int(self._calculate_target_names_score(combo)) if self.preferences['preferred_people'] else 0
             
             # Calculate constraint score
             constraint_score = self._calculate_constraint_score(combo, current_shift.shift_type)
@@ -84,12 +84,20 @@ class ComboManager:
             except KeyError:
                 raise KeyError(f"Missing {score_type} constraint score for person {person.name}")
 
-    def _has_target_names(self, combo: List[Person]) -> bool:
-        """Check if the combination contains any of the target name pairs."""
+    def _calculate_target_names_score(self, combo: List[Person]) -> float:
+        """
+        Check if the combination contains any of the target name pairs.
+        Returns a negative weight value for found pairs (lower score = higher priority).
+        Returns 0 if no target pairs are found.
+        """
         names_in_combo = {p.name for p in combo}
+        sum = 0.0
         if self.preferences['preferred_people']:
-            return any(len(names_in_combo & target_pair) == 2 for target_pair in self.target_names)
-        return 0.0
+            for target in self.target_names:
+                if len(names_in_combo & target['pair']) == 2:
+                    # Return negative weight so higher weights get lower scores
+                    sum += target['weight']
+        return sum
 
     def _count_double_shifts(self, combo: List[Person], shift: Shift, shift_group) -> int:
         """Count how many people in the combo can do double shifts."""
