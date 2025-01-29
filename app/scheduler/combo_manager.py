@@ -8,7 +8,7 @@ class ComboManager:
     TARGET_PAIRS = [
         {"Avishay", "Shani Keynan"},
         # {"Shani Keynan", "Eliran Ron"},
-        # {"Shani Keynan", "Nir Ozery"},
+        {"Shani Keynan", "Nir Ozery"},
         # {"Shani Keynan", "Yoram"},
         # {"Shani Keynan", "Maor"}
     ]
