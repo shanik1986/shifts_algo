@@ -80,6 +80,19 @@ class ShiftGroup:
             return True
         return False
     
+    def is_third_consecutive_shift(self, person: 'Person', shift: Shift) -> bool:
+        """
+        Check if assignment will violate third consecutive shift constraint.
+        To check that we check if it's the third shift in a day, and if so, whether that person
+        is assigned to an evening shift that day or if this is an evening shift. If so, we return True.
+        """
+        if self.is_third_shift(person, shift) and \
+        (shift.is_evening or person.is_shift_assigned(Shift(shift.shift_day, "Evening", group=self))):
+            return True
+        return False
+
+        
+    
     def is_third_shift(self, person: 'Person', shift: Shift) -> bool:
         """Check if assignment will violate third shift constraint"""
         count = self.count_shifts_in_day(person, shift.shift_day)
@@ -117,8 +130,10 @@ class ShiftGroup:
         if self.is_third_shift(person, shift):
             if not allow_three_shifts:
                 return False, "Third shift not allowed"
-            elif shift.is_evening or person.is_shift_assigned(Shift(shift.shift_day, "Evening", group=self)):
-                return False, "Third shift not allowed when evening shift is assigned"
+        
+        # Third consecutive shift
+        if self.is_third_consecutive_shift(person, shift):
+            return False, "Three consecutive shifts not allowed"
         
         # Night after evening
         if self.is_night_after_evening(person, shift):
