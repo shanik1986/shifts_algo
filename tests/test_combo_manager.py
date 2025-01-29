@@ -132,7 +132,7 @@ def test_disable_constraint_score(combo_manager, sample_people):
     # Order should remain unchanged when constraint score is disabled
     assert sorted_combos == combinations 
 
-def test_target_names_structure(combo_manager, target_names_people_with_same_constraint_score):
+def test_target_names_structure(combo_manager):
     """Test that target_names structure matches ComboManager's defined pairs"""
     assert combo_manager.target_names == ComboManager.TARGET_PAIRS
 

@@ -3,6 +3,7 @@ from typing import List, Tuple, Dict, TYPE_CHECKING, Optional
 from app.scheduler.utils import get_adjacent_days, get_adjacent_shifts, is_weekend_shift, debug_log
 from app.scheduler.shift import Shift
 from app.scheduler.shift import VALID_SHIFT_TYPES
+from app.scheduler.constraint_manager import ConstraintManager
 if TYPE_CHECKING:
     from app.scheduler.shift_group import ShiftGroup
 
@@ -25,6 +26,10 @@ class Person:
     
     # Add new fields for different constraint scores
     constraint_scores: Dict[str, float] = field(default_factory=dict)
+
+    def __post_init__(self):
+        """Initialize the constraint manager after person is created"""
+        self.constraint_manager = ConstraintManager(self)
 
     def assign_to_shift(self, shift: Shift) -> None:
         """Assign person to a shift"""
@@ -65,37 +70,9 @@ class Person:
         """Determine if person is eligible for a given shift based on all constraints"""
         base_msg = f"Checking {self.name} availability for {shift.shift_day} {shift.shift_time}: "
 
-        # Basic constraints
-        if shift.is_weekend_shift and self.weekend_shifts >= self.max_weekend_shifts:
-            debug_log(base_msg + "Not available - Weekend shift limit reached")
-            return False
+        # Use constraint manager to check all constraints
+        is_allowed, reason = self.constraint_manager.check_all_constraints(shift)
         
-        if self.is_shift_blocked(shift):
-            debug_log(base_msg + "Not available - Shift is blocked")
-            return False
-        
-        # Check if the person reached his max shifts
-        if self.is_max_shifts_reached():
-            debug_log(base_msg + "Not available - Maximum shifts reached")
-            return False
-            
-        # Check if the person reached their max nights
-        if shift.is_night and self.is_max_nights_reached():
-            debug_log(base_msg + "Not available - Maximum night shifts reached")
-            return False
-
-        # Group constraints
-        if not shift.group:
-            return True
-
-        is_allowed, reason = shift.group.check_all_constraints(
-            person=self,
-            shift=shift,
-            allow_consecutive=self.double_shift,
-            allow_three_shifts=self.are_three_shifts_possible,
-            allow_night_noon=self.night_and_noon_possible
-        )
-
         if not is_allowed:
             debug_log(base_msg + f"Not available - {reason}")
             return False
