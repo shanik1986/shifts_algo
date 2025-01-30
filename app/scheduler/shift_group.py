@@ -128,9 +128,13 @@ class ShiftGroup:
 
     def rank_shifts(self, people: List['Person']) -> List[Shift]:
         """
-        Rank shifts by their constraint level: available people / needed.
+        Rank shifts by their constraint level, considering shift types (regular, night, weekend).
         Returns a sorted list of shifts, with most constrained first.
         """
+        # First, calculate constraint scores for all people
+        for person in people:
+            person.calculate_constraint_score(self)
+        
         rankings = []
         for shift in self.shifts:
             if shift.is_staffed:  # Skip already staffed shifts
@@ -139,21 +143,35 @@ class ShiftGroup:
             # Get eligible people for this shift
             eligible_people = [p for p in people if p.is_eligible_for_shift(shift)]
             
-            if eligible_people:
-                constraint_score = len(eligible_people) / shift.needed
+            if not eligible_people:
+                # Highly constrained - no eligible people
+                constraint_score = float('inf')
             else:
-                constraint_score = 0
+                # Determine shift type
+                shift_type = 'regular'
+                if shift.is_night:
+                    shift_type = 'night'
+                elif shift.is_weekend_shift:
+                    shift_type = 'weekend'
+                
+                # Average constraint score for this shift type among eligible people
+                type_scores = [p.constraint_scores[shift_type] for p in eligible_people]
+                avg_type_constraint = sum(type_scores) / len(type_scores)
+                
+                # Base score is eligible/needed ratio, multiplied by type constraint
+                base_score = len(eligible_people) / shift.needed
+                constraint_score = base_score * (avg_type_constraint + 1)  # Add 1 to avoid multiplying by zero
                 
             rankings.append((constraint_score, shift))
-            print(f"Shift: {shift}, Needed: {shift.needed}, "
-                  f"Available people: {len(eligible_people)}, Score: {constraint_score}")
+            print(f"Shift: {shift}, Type: {'night' if shift.is_night else 'weekend' if shift.is_weekend_shift else 'regular'}, "
+                  f"Needed: {shift.needed}, Available: {len(eligible_people) if eligible_people else 0}, "
+                  f"Score: {constraint_score:.2f}")
 
         sorted_rankings = sorted(rankings, key=lambda x: x[0])  # Sort by constraint score
 
         print("\n=== Ranked Shifts ===")
         for rank, (score, shift) in enumerate(sorted_rankings, 1):
-            print(f"Rank {rank}: {shift} with score {score}")
+            print(f"Rank {rank}: {shift} with score {score:.2f}")
         print("=====================\n")
         
-        # Return just the sorted shifts
         return [shift for _, shift in sorted_rankings] 

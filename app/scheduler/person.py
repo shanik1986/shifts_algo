@@ -136,9 +136,9 @@ class Person:
         
         # Calculate scores (higher score = more constrained)
         self.constraint_scores = {
-            'regular': (eligible_regular / remaining_regular) if remaining_regular > 0 else float('inf'),
-            'night': (eligible_nights / remaining_nights) if remaining_nights > 0 else float('inf'),
-            'weekend': (eligible_weekends / remaining_weekends) if remaining_weekends > 0 else float('inf')
+            'regular': (eligible_regular / remaining_regular) if remaining_regular > 0 else -float('inf'),
+            'night': (eligible_nights / remaining_nights) if remaining_nights > 0 else -float('inf'),
+            'weekend': (eligible_weekends / remaining_weekends) if remaining_weekends > 0 else -float('inf')
         }
         
         # Validate that all required scores exist
