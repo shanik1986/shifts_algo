@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 from typing import List, Tuple
 
 # Add project root to Python path
@@ -180,6 +181,9 @@ def run_shift_algorithm(shift_group=None, timeout=None):
     Returns:
         Tuple of (success, assignments, reason, shift_counts, people)
     """
+    # Add timing at the start
+    start_time = time.time()
+    
     cancel_event = threading.Event()
     
     def algorithm_worker(shift_group):
@@ -208,6 +212,10 @@ def run_shift_algorithm(shift_group=None, timeout=None):
         try:
             success, reason, shift_group = future.result(timeout=timeout)
             
+            # Calculate execution time
+            execution_time = time.time() - start_time
+            print(f"\nScheduling algorithm completed in {execution_time:.2f} seconds")
+            
             if success:
                 # Create web interface dictionaries
                 assignments = {}
@@ -228,6 +236,8 @@ def run_shift_algorithm(shift_group=None, timeout=None):
                 return False, None, reason, None, None
             
         except TimeoutError:
+            execution_time = time.time() - start_time
+            print(f"\nAlgorithm timed out after {execution_time:.2f} seconds")
             cancel_event.set()  # Signal algorithm to stop
             return False, None, "Algorithm timed out", None, None
 

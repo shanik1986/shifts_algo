@@ -18,7 +18,7 @@ class ComboManager:
         self.preferences = {
             'constraint_score': True,  # Enabled by default
             'preferred_people': True,  # Enabling target names preference
-            'double_shifts': False
+            'double_shifts': True
         }
         
         # Use the class-defined target pairs
