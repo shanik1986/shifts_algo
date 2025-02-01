@@ -134,7 +134,7 @@ class Person:
             if self.is_eligible_for_shift(shift) and shift.is_weekend_shift
         )
         
-        # Calculate scores (higher score = more constrained)
+        # Calculate scores (lower score = more constrained)
         self.constraint_scores = {
             'regular': (eligible_regular / remaining_regular) if remaining_regular > 0 else float('inf'),
             'night': (eligible_nights / remaining_nights) if remaining_nights > 0 else float('inf'),

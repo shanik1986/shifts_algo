@@ -8,16 +8,17 @@ class ComboManager:
     TARGET_PAIRS = [
         {'pair': {"Avishay", "Shani Keynan"}, 'weight': 5},
         {'pair': {"Shani Keynan", "Dubi Friger"}, 'weight': -5},
-        # {'pair': {"Shani Keynan", "Nir Ozery"}, 'weight': 3},
-        # {'pair': {"Shani Keynan", "Amir Foran"}, 'weight': -3},
-        # {'pair': {"Shani Keynan", "Mordechai"}, 'weight': -2},
+        {'pair': {"Shani Keynan", "Nir Ozery"}, 'weight': 3},
+        {'pair': {"Shani Keynan", "Itay"}, 'weight': -5},
+        {'pair': {"Shani Keynan", "Mordechai"}, 'weight': -2},
+        {'pair': {"Shani Keynan", "Shai Katzil"}, 'weight': -3},
     ]
 
     def __init__(self):
         self.preferences = {
             'constraint_score': True,  # Enabled by default
             'preferred_people': True,  # Enabling target names preference
-            'double_shifts': True
+            'double_shifts': False
         }
         
         # Use the class-defined target pairs
