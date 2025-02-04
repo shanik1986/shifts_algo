@@ -189,3 +189,6 @@ class Shift:
         new_shift.is_staffed = self.is_staffed
         new_shift.assigned_people = self.assigned_people.copy()
         return new_shift
+    
+    def __repr__(self):
+        return f"Shift(day={self.shift_day} time={self.shift_time})"
