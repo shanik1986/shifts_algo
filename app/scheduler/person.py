@@ -14,9 +14,9 @@ class Person:
     double_shift: bool
     max_shifts: int
     max_nights: int
+    max_weekend_shifts: int = 1
     are_three_shifts_possible: bool
     night_and_noon_possible: bool
-    max_weekend_shifts: int = 2
     shift_counts: int = 0
     night_counts: int = 0
     weekend_shifts: int = 0
