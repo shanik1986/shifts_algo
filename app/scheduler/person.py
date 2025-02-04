@@ -16,7 +16,7 @@ class Person:
     max_nights: int
     are_three_shifts_possible: bool
     night_and_noon_possible: bool
-    max_weekend_shifts: int = 1
+    max_weekend_shifts: int = 2
     shift_counts: int = 0
     night_counts: int = 0
     weekend_shifts: int = 0
@@ -110,9 +110,9 @@ class Person:
         """
         
         # Calculate remaining capacities
-        remaining_regular = self.get_remaining_capacity_by_type('regular')
-        remaining_nights = self.get_remaining_capacity_by_type('night')
-        remaining_weekends = self.get_remaining_capacity_by_type('weekend')
+        remaining_regular = self.get_capacity_by_type('regular')
+        remaining_nights = self.get_capacity_by_type('night')
+        remaining_weekends = self.get_capacity_by_type('weekend')
         
         # Get unstaffed shifts
         unstaffed_shifts = [s for s in shift_group.shifts if not s.is_staffed]
@@ -146,7 +146,7 @@ class Person:
         return self.constraint_scores
 
     
-    def get_remaining_capacity_by_type(self, shift_type: str) -> int:
+    def get_capacity_by_type(self, shift_type: str) -> int:
         if shift_type == 'regular':
             max_regular_shifts = self.max_shifts - self.max_nights
             regular_shift_count = self.shift_counts - self.night_counts
