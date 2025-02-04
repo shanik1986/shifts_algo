@@ -13,6 +13,7 @@ class ComboManager:
         {'pair': {"Shani Keynan", "Mordechai"}, 'weight': -2},
         {'pair': {"Shani Keynan", "Shai Katzil"}, 'weight': -3},
         {'pair': {"Shani Keynan", "Amir Foran"}, 'weight': -3},
+        {'pair': {"Shani Keynan", "Nir Hacohen"}, 'weight': 3},
     ]
 
     def __init__(self):
