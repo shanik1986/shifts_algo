@@ -6,14 +6,14 @@ from app.scheduler.shift import Shift
 class ComboManager:
     # Define target pairs as a class attribute
     TARGET_PAIRS = [
-        {'pair': {"Avishay", "Shani Keynan"}, 'weight': 5},
+        {'pair': {"Avishay", "Shani Keynan"}, 'weight': 10},
         {'pair': {"Shani Keynan", "Dubi Friger"}, 'weight': -6},
-        {'pair': {"Shani Keynan", "Nir Ozery"}, 'weight': 3},
+        {'pair': {"Shani Keynan", "Nir Ozery"}, 'weight': 2},
         {'pair': {"Shani Keynan", "Itay"}, 'weight': -6},
         {'pair': {"Shani Keynan", "Mordechai"}, 'weight': -2},
         {'pair': {"Shani Keynan", "Shai Katzil"}, 'weight': -3},
         {'pair': {"Shani Keynan", "Amir Foran"}, 'weight': -3},
-        {'pair': {"Shani Keynan", "Nir Hacohen"}, 'weight': 3},
+        {'pair': {"Shani Keynan", "Nir Hacohen"}, 'weight': 2},
     ]
 
     def __init__(self):
