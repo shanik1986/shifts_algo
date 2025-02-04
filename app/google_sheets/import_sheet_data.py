@@ -6,8 +6,10 @@ from app.scheduler.shift import Shift, VALID_DAYS, VALID_SHIFT_TIMES
 from app.scheduler.shift_group import ShiftGroup
 from typing import List
 
-def parse_people_data(df: pd.DataFrame, shift_group: ShiftGroup) -> List[Person]:
-    """Parse people data from sheet and return list of Person objects"""
+def parse_people_data(df: pd.DataFrame, shift_group: ShiftGroup, max_weekend: int = 1) -> List[Person]:
+    """Parse people data from sheet and return list of Person objects.
+       If max_weekend is provided, it overrides each Person's maximum weekend shifts.
+    """
     # Fix the boolean columns
     boolean_columns = ["Double Shifts?", "3 Shift Days?", "Night + Noon"]
     for col in boolean_columns:
@@ -41,7 +43,8 @@ def parse_people_data(df: pd.DataFrame, shift_group: ShiftGroup) -> List[Person]
             are_three_shifts_possible=row["3 Shift Days?"],
             night_and_noon_possible=row["Night + Noon"],
             shift_counts=0,
-            night_counts=0
+            night_counts=0,
+            max_weekend_shifts=max_weekend
         )
         people.append(person)
     
@@ -64,8 +67,15 @@ def parse_shift_needs(df: pd.DataFrame, shift_group: ShiftGroup) -> List[Shift]:
     
     return shifts
 
-def get_fresh_data(shift_needs_sheet_name: str = "Needed Shifts", people_sheet_name: str = "Real Data - 15/01") -> ShiftGroup:
-    """Gets fresh data from Google Sheets and processes it into a ShiftGroup"""
+def get_fresh_data(
+    shift_needs_sheet_name: str = "Needed Shifts",
+    people_sheet_name: str = "Real Data - 15/01",
+    max_weekend: int = 1
+) -> ShiftGroup:
+    """
+    Gets fresh data from Google Sheets and processes it into a ShiftGroup.
+    If max_weekend is provided, it is used as the default for all Person objects.
+    """
     # Get raw data from sheets
     shift_needs_raw = get_google_sheet_data("Shifts", shift_needs_sheet_name)
     people_raw = get_google_sheet_data("Shifts", people_sheet_name)
@@ -78,7 +88,7 @@ def get_fresh_data(shift_needs_sheet_name: str = "Needed Shifts", people_sheet_n
 
     
     # Parse and add people
-    people = parse_people_data(people_raw, shift_group)
+    people = parse_people_data(people_raw, shift_group, max_weekend=max_weekend)
     shift_group.people = people
     
     return shift_group
