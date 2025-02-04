@@ -128,32 +128,95 @@ class ShiftGroup:
 
     def rank_shifts(self, people: List['Person']) -> List[Shift]:
         """
-        Rank shifts by their constraint level: available people / needed.
-        Returns a sorted list of shifts, with most constrained first.
+        Rank shifts by two dynamic parameters:
+          1) Shift type's overall ratio = (total eligible capacity) / (total needed);
+             smaller ratio => more constrained => higher priority.
+          2) Within that shift type, the per-shift constraint_score (lower => more constrained).
         """
+        # First ensure all people have their constraint scores calculated
+        for person in people:
+            if not person.constraint_scores:  # If scores haven't been calculated yet
+                person.calculate_constraint_score(self)
+        
+        # Compute dynamic ratios per shift type
+        type_ratios = self.get_shift_type_ratios()
+
         rankings = []
         for shift in self.shifts:
             if shift.is_staffed:  # Skip already staffed shifts
                 continue
-                
-            # Get eligible people for this shift
+            
+            shift_type = shift.shift_type
             eligible_people = [p for p in people if p.is_eligible_for_shift(shift)]
             
-            if eligible_people:
-                constraint_score = len(eligible_people) / shift.needed
-            else:
-                constraint_score = 0
-                
-            rankings.append((constraint_score, shift))
-            print(f"Shift: {shift}, Needed: {shift.needed}, "
-                  f"Available people: {len(eligible_people)}, Score: {constraint_score}")
+            try:
+                total_eligible_capacity = sum(
+                    p.constraint_scores[shift_type] 
+                    for p in eligible_people
+                )
+                if total_eligible_capacity < 0:
+                    raise ValueError(f"Found negative constraint score for shift type {shift_type}")
+            except KeyError as e:
+                # Find which person(s) are missing the constraint score
+                missing_score_people = [
+                    (p.name, list(p.constraint_scores.keys()))
+                    for p in eligible_people 
+                    if shift_type not in p.constraint_scores
+                ]
+                raise KeyError(
+                    f"Missing {shift_type} constraint score for people: {missing_score_people}"
+                ) from e
 
-        sorted_rankings = sorted(rankings, key=lambda x: x[0])  # Sort by constraint score
+            # A capacity of 0 => infinite constraint_score
+            constraint_score = total_eligible_capacity / shift.needed if total_eligible_capacity > 0 else float('inf')
+            
+            rankings.append((constraint_score, shift))
+
+        # Now sort using the dynamic ratio first, then the per-shift constraint_score
+        def sort_key(item):
+            score, shift = item
+            # Use exact shift_type to match ratios dictionary
+            ratio = type_ratios.get(shift.shift_type, float('inf'))
+            return (ratio, score)
+
+        sorted_rankings = sorted(rankings, key=sort_key)
 
         print("\n=== Ranked Shifts ===")
         for rank, (score, shift) in enumerate(sorted_rankings, 1):
-            print(f"Rank {rank}: {shift} with score {score}")
+            print(f"Rank {rank}: {shift} | "
+                  f"Type: {shift.shift_type} (ratio={type_ratios.get(shift.shift_type, 'inf')}) | "
+                  f"Score={score}")
         print("=====================\n")
-        
-        # Return just the sorted shifts
+
         return [shift for _, shift in sorted_rankings] 
+    
+    def get_remaining_shift_types(self) -> List[str]:
+        unstaffed_shifts = [s for s in self.shifts if not s.is_staffed]
+        return list(set([shift.shift_type for shift in unstaffed_shifts]))
+
+    def get_shift_type_ratios(self) -> Dict[str, float]:
+        # Get unstaffed shifts
+        unstaffed_shifts = [s for s in self.shifts if not s.is_staffed]
+
+        # Create a set of keys that represent remaining shift types
+        remaining_shift_types = self.get_remaining_shift_types()
+        
+
+        # Create a dict where the keys are shift types and the values are the type's constraint score calculated by: 
+        # (sum of all eligible remaining capacity for this shift type) / (total needed for this shift type)
+        shift_type_ratios = {}
+        for shift_type in remaining_shift_types:
+            total_needed = sum(shift.needed for shift in unstaffed_shifts if shift.shift_type == shift_type)
+            eligible_capacity = self.get_eligible_capacity_by_type(shift_type)
+            shift_type_ratios[shift_type] = eligible_capacity / total_needed
+        
+        return shift_type_ratios
+
+    def get_eligible_capacity_by_type(self, shift_type: str) -> float:
+        eligible_capacity = 0
+        unstaffed_shifts = [s for s in self.shifts if not s.is_staffed]
+        for shift in unstaffed_shifts:
+            if shift.shift_type == shift_type:
+                eligible_capacity += sum(p.get_capacity_by_type(shift_type) for p in self.people if p.is_eligible_for_shift(shift))
+        return eligible_capacity
+
