@@ -63,25 +63,25 @@ class Person:
     
     def is_eligible_for_shift(self, shift: Shift) -> bool:
         """Determine if person is eligible for a given shift based on all constraints"""
-        base_msg = f"Checking {self.name} availability for {shift.shift_day} {shift.shift_time}: "
+        # base_msg = f"Checking {self.name} availability for {shift.shift_day} {shift.shift_time}: "
 
         # Basic constraints
         if shift.is_weekend_shift and self.weekend_shifts >= self.max_weekend_shifts:
-            debug_log(base_msg + "Not available - Weekend shift limit reached")
+            # debug_log(base_msg + "Not available - Weekend shift limit reached")
             return False
         
         if self.is_shift_blocked(shift):
-            debug_log(base_msg + "Not available - Shift is blocked")
+            # debug_log(base_msg + "Not available - Shift is blocked")
             return False
         
         # Check if the person reached his max shifts
         if self.is_max_shifts_reached():
-            debug_log(base_msg + "Not available - Maximum shifts reached")
+            # debug_log(base_msg + "Not available - Maximum shifts reached")
             return False
             
         # Check if the person reached their max nights
         if shift.is_night and self.is_max_nights_reached():
-            debug_log(base_msg + "Not available - Maximum night shifts reached")
+            # debug_log(base_msg + "Not available - Maximum night shifts reached")
             return False
 
         # Group constraints
@@ -97,10 +97,10 @@ class Person:
         )
 
         if not is_allowed:
-            debug_log(base_msg + f"Not available - {reason}")
+            # debug_log(base_msg + f"Not available - {reason}")
             return False
 
-        debug_log(base_msg + "Available - All constraints passed")
+        # debug_log(base_msg + "Available - All constraints passed")
         return True
     
     def calculate_constraint_score(self, shift_group: 'ShiftGroup') -> Dict[str, float]:
