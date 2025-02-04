@@ -7,11 +7,12 @@ class ComboManager:
     # Define target pairs as a class attribute
     TARGET_PAIRS = [
         {'pair': {"Avishay", "Shani Keynan"}, 'weight': 5},
-        {'pair': {"Shani Keynan", "Dubi Friger"}, 'weight': -5},
+        {'pair': {"Shani Keynan", "Dubi Friger"}, 'weight': -6},
         {'pair': {"Shani Keynan", "Nir Ozery"}, 'weight': 3},
-        {'pair': {"Shani Keynan", "Itay"}, 'weight': -5},
+        {'pair': {"Shani Keynan", "Itay"}, 'weight': -6},
         {'pair': {"Shani Keynan", "Mordechai"}, 'weight': -2},
         {'pair': {"Shani Keynan", "Shai Katzil"}, 'weight': -3},
+        {'pair': {"Shani Keynan", "Amir Foran"}, 'weight': -3},
     ]
 
     def __init__(self):
