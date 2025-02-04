@@ -110,10 +110,16 @@ def test_weekend_shift_limitation(sample_person, complete_shift_group):
     
     # Second weekend shift should not be allowed
     assert person.is_eligible_for_shift(Shift("Saturday", "Morning", group=complete_shift_group)) == False
+
+    # Increase max weekend shifts to 2 and assert that the second weekend shift is now allowed
+    person.max_weekend_shifts = 2
+    assert person.is_eligible_for_shift(Shift("Saturday", "Morning", group=complete_shift_group)) == True
+    person.assign_to_shift(Shift("Saturday", "Morning", group=complete_shift_group))
+    assert person.is_eligible_for_shift(Shift("Saturday", "Evening", group=complete_shift_group)) == False
     
     # Unassigning should make weekend shifts available again
     person.unassign_from_shift(Shift("Friday", "Evening", group=complete_shift_group))
-    assert person.is_eligible_for_shift(Shift("Saturday", "Morning", group=complete_shift_group)) == True
+    assert person.is_eligible_for_shift(Shift("Saturday", "Evening", group=complete_shift_group)) == True
 
 def test_shift_counts(sample_person, complete_shift_group):
     """Test shift counting (regular, night, weekend)"""
@@ -184,25 +190,26 @@ def test_calculate_constraint_score(sample_person):
     """
     group = ShiftGroup()
     
-    # Add regular shifts
+    # Add regular shifts - 3 total needed regular shifts 
     group.add_shift(Shift("Monday", "Morning", needed=1, group=group))
     group.add_shift(Shift("Tuesday", "Morning", needed=1, group=group))
     group.add_shift(Shift("Sunday", "Morning", needed=1, group=group))
     
-    # Add night shifts  
+    # Add night shifts  - 4 total needed night shifts
     group.add_shift(Shift("Monday", "Night", needed=1, group=group))
     group.add_shift(Shift("Tuesday", "Night", needed=1, group=group))
     group.add_shift(Shift("Wednesday", "Night", needed=1, group=group))
+    group.add_shift(Shift("Sunday", "Night", needed=1, group=group))
     
-    # Add weekend shifts
+    # Add weekend shifts - 2 total needed weekend shifts
     group.add_shift(Shift("Saturday", "Morning", needed=1, group=group))
     group.add_shift(Shift("Friday", "Evening", needed=1, group=group))
 
     # Initial state:
     scores = sample_person.calculate_constraint_score(group)
-    assert scores['regular'] == 2/5  # 2 eligible regular shifts / 5 max shifts
-    assert scores['night'] == 2/2    # 2 eligible night shifts / 2 max nights
-    assert scores['weekend'] == 2/1   # 2 eligible weekend shift / 1 max weekend
+    assert scores['regular'] == 2/3  # 2 eligible regular shifts / 3 remaining regular shifts (5 max shifts minus 2 night shifts == 3)
+    assert scores['night'] == 3/2    # 3 eligible night shifts / 2 remaining night shift capacity
+    assert scores['weekend'] == 2/1   # 2 eligible weekend shift / 1 remaining weekend shift capacity
 
     # Test error handling by mocking calculate_constraint_score to return invalid scores
     def mock_calculate_scores_missing(self):
@@ -235,7 +242,7 @@ def test_calculate_constraint_score(sample_person):
     # Assign a regular shift
     sample_person.assign_to_shift(Shift("Monday", "Morning", group=group))
     scores = sample_person.calculate_constraint_score(group)
-    assert scores['regular'] == 1/4  # 1 eligible regular shift / 4 remaining shifts
+    assert scores['regular'] == 1/2  # 1 eligible regular shift / 2 remaining shifts
 
     # Assign a night shift
     sample_person.assign_to_shift(Shift("Monday", "Night", group=group))
