@@ -26,39 +26,17 @@ def debug_log(message):
         print(message)
 
 
-def validate_remaining_shifts(remaining_shifts, people):
-    """Validate remaining shifts have enough eligible people"""
-    # Check if the remaining capacity of all people is enough for the remaining shifts
-    total_remaining_capacity = sum(p.max_shifts - p.shift_counts for p in people)
-    total_needed_capacity = sum(shift.needed for shift in remaining_shifts if not shift.is_staffed)
-    
-    if total_remaining_capacity < total_needed_capacity:
-        print("Validation failed: Not enough remaining capacity for all shifts.")
-        return False
-    
-    #Check if the remainin night capacity is enough for all night shifts
-    total_remaining_night_capacity = sum(p.max_nights - p.night_counts for p in people)
-    total_needed_night_capacity = sum(shift.needed for shift in remaining_shifts if shift.is_night and not shift.is_staffed)
-    if total_remaining_night_capacity < total_needed_night_capacity:
-        print("Validation failed: Not enough remaining night capacity for all night shifts.")
-        return False
-    
-    #Check if the remainin weekend capacity is enough for all weekend shifts
-    total_remaining_weekend_capacity = sum(p.max_weekend_shifts - p.weekend_shifts for p in people)
-    total_needed_weekend_capacity = sum(shift.needed for shift in remaining_shifts if shift.is_weekend_shift and not shift.is_staffed)
-    if total_remaining_weekend_capacity < total_needed_weekend_capacity:
-        print("Validation failed: Not enough remaining weekend capacity for all weekend shifts.")
-        return False
-    
-    for shift in remaining_shifts:
-        eligible_people = [p for p in people if p.is_eligible_for_shift(shift)]
-        if len(eligible_people) < shift.needed:
-            print(f"Validation failed: {shift.shift_day} {shift.shift_time} needs {shift.needed} people, "
-                    f"but only {len(eligible_people)} are available.")
+def validate_eligibility_for_remaining_shifts(remaining_shifts, shift_group):
+    shift_types = shift_group.get_remaining_shift_types()
+    for shift_type in shift_types:
+        needed_capacity = sum(shift.needed for shift in remaining_shifts if shift.shift_type == shift_type)
+        eligible_capacity = shift_group.get_eligible_capacity_by_type(shift_type)
+        if eligible_capacity < needed_capacity:
+            print(f"Validation failed: {shift_type} needs {needed_capacity} people, "
+                    f"but only {eligible_capacity} are available.")
             return False
     print("Validation passed: All shifts have enough eligible people.")
     return True
-
 
 def backtrack_assign(remaining_shifts: List[Shift], shift_group: ShiftGroup,
                     max_depth: int = 10000, depth: int = 0, 
@@ -127,7 +105,7 @@ def backtrack_assign(remaining_shifts: List[Shift], shift_group: ShiftGroup,
         
         ranked_shifts = [shift.copy_with_group() for shift in shift_group.rank_shifts(shift_group.people)]
         
-        if validate_remaining_shifts(ranked_shifts, shift_group.people):
+        if validate_eligibility_for_remaining_shifts(ranked_shifts, shift_group):
             result, reason = backtrack_assign(
                 ranked_shifts, shift_group, max_depth=max_depth, depth=depth + 1, cancel_event=cancel_event
             )
