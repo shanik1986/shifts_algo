@@ -191,4 +191,4 @@ class Shift:
         return new_shift
     
     def __repr__(self):
-        return f"Shift(day={self.shift_day} time={self.shift_time})"
+        return f"{self.shift_day} {self.shift_time}"
