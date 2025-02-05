@@ -4,14 +4,6 @@ from app.scheduler.person import Person
 from app.scheduler.shift import Shift
 from app.scheduler.shift_group import ShiftGroup
 
-# Define target pairs to match ComboManager's configuration
-TARGET_PAIRS = [
-    {"Avishay", "Shani Keynan"},
-    # {"Shani Keynan", "Eliran Ron"},
-    # {"Shani Keynan", "Nir Ozery"},
-    # {"Shani Keynan", "Yoram"},
-    # {"Shani Keynan", "Maor"}
-]
 
 def test_empty_combinations(combo_manager):
     """Test that empty combinations list raises ValueError"""
@@ -137,60 +129,125 @@ def test_target_names_structure(combo_manager, target_names_people_with_same_con
     assert combo_manager.target_names == ComboManager.TARGET_PAIRS
 
 def test_target_names_sorting(combo_manager, target_names_people_with_same_constraint_score):
-    """Test that combinations with target pairs are prioritized"""
+    """Test that combinations with target pairs are sorted by their weights"""
 
     # Create a regular shift
     regular_shift = Shift("Monday", "Morning", group=ShiftGroup())
     
-    # Enable target pairs preference
+    # Enable target pairs preference and disable constraint score to isolate the test
     combo_manager.preferences['preferred_people'] = True
+    combo_manager.preferences['constraint_score'] = False
     
-    people = target_names_people_with_same_constraint_score
-    target_pair = next(iter(ComboManager.TARGET_PAIRS))
+    # Get highest and lowest weighted pairs
+    highest_weight_pair = max(ComboManager.TARGET_PAIRS, key=lambda x: x['weight'])
+    lowest_weight_pair = min(ComboManager.TARGET_PAIRS, key=lambda x: x['weight'])
     
-    # Create target pair combo using people with matching names
-    target_pair_combo = [
-        next(p for p in people if p.name == name)
-        for name in target_pair
+    # Create people for both pairs and non-target
+    highest_weight_people = [
+        Person(name=name, unavailable=[], double_shift=False, 
+              max_shifts=10, max_nights=2, are_three_shifts_possible=True, 
+              night_and_noon_possible=True)
+        for name in highest_weight_pair['pair']
     ]
     
-    # Create non-target combo using people with NOT_TARGET prefix
-    non_target_combo = [
-        p for p in people if p.name.startswith("NOT_TARGET_")
-    ][:2]
+    lowest_weight_people = [
+        Person(name=name, unavailable=[], double_shift=False, 
+              max_shifts=10, max_nights=2, are_three_shifts_possible=True, 
+              night_and_noon_possible=True)
+        for name in lowest_weight_pair['pair']
+    ]
     
-    combinations = [non_target_combo, target_pair_combo]
+    non_target_people = [
+        Person(name=f"NOT_TARGET_{i}", unavailable=[], double_shift=False,
+              max_shifts=10, max_nights=2, are_three_shifts_possible=True,
+              night_and_noon_possible=True)
+        for i in range(1, 3)
+    ]
+    
+    # Create our combinations
+    highest_weight_combo = highest_weight_people
+    lowest_weight_combo = lowest_weight_people
+    non_target_combo = non_target_people
+    
+    print("\nTARGET_PAIRS:", ComboManager.TARGET_PAIRS)
+    print("Highest weight pair:", [p.name for p in highest_weight_combo], f"(weight: {highest_weight_pair['weight']})")
+    print("Lowest weight pair:", [p.name for p in lowest_weight_combo], f"(weight: {lowest_weight_pair['weight']})")
+    print("Non-target combo:", [p.name for p in non_target_combo])
+    
+    # Test all combinations in different orders
+    combinations = [non_target_combo, highest_weight_combo, lowest_weight_combo]
     sorted_combos = combo_manager.sort_combinations(combinations, current_shift=regular_shift)
     
-    assert sorted_combos[0] == target_pair_combo
-    assert sorted_combos[1] == non_target_combo
+    print("Sorted combos:", [[p.name for p in combo] for combo in sorted_combos])
+    
+    # The highest weight pair should come first
+    assert sorted_combos[0] == highest_weight_combo, \
+        f"Expected highest weight pair {[p.name for p in highest_weight_combo]} to be first, " \
+        f"but got {[p.name for p in sorted_combos[0]]}"
+    
+    # If the lowest weight is negative, non-target should come before it
+    if lowest_weight_pair['weight'] < 0:
+        assert sorted_combos[1] == non_target_combo, \
+            f"Expected non-target pair to come before negative weight pair"
+        assert sorted_combos[2] == lowest_weight_combo, \
+            f"Expected lowest weight pair to come last"
+    else:
+        # If lowest weight is positive, it should come before non-target
+        assert sorted_combos[1] == lowest_weight_combo, \
+            f"Expected lowest weight pair to come before non-target"
+        assert sorted_combos[2] == non_target_combo, \
+            f"Expected non-target pair to come last"
 
 def test_target_pairs_vs_non_pairs(combo_manager, target_names_people_with_same_constraint_score):
-    """Test that any target pair comes before non-target pairs"""
+    """Test that any target pair comes before non-target pairs when weight is positive"""
     # Create a regular shift
     regular_shift = Shift("Monday", "Morning", group=ShiftGroup())
     
-    # Enable target pairs preference
+    # Enable target pairs preference and disable constraint score to isolate the test
     combo_manager.preferences['preferred_people'] = True
+    combo_manager.preferences['constraint_score'] = False
     
-    people = target_names_people_with_same_constraint_score
-    target_pair = next(iter(ComboManager.TARGET_PAIRS))
+    # Get a positive weight pair (should come before non-target)
+    positive_weight_pair = next(
+        pair for pair in ComboManager.TARGET_PAIRS 
+        if pair['weight'] > 0
+    )
     
-    # Create target pair combo using people with matching names
-    target_pair_combo = [
-        next(p for p in people if p.name == name)
-        for name in target_pair
+    # Create people for positive weight pair and non-target
+    positive_weight_people = [
+        Person(name=name, unavailable=[], double_shift=False, 
+              max_shifts=10, max_nights=2, are_three_shifts_possible=True, 
+              night_and_noon_possible=True)
+        for name in positive_weight_pair['pair']
     ]
     
-    # Create non-target combo using people with NOT_TARGET prefix
-    non_target_combo = [
-        p for p in people if p.name.startswith("NOT_TARGET_")
-    ][:2]
+    non_target_people = [
+        Person(name=f"NOT_TARGET_{i}", unavailable=[], double_shift=False,
+              max_shifts=10, max_nights=2, are_three_shifts_possible=True,
+              night_and_noon_possible=True)
+        for i in range(1, 3)
+    ]
     
-    combinations = [non_target_combo, target_pair_combo]
+    # Create our combinations
+    positive_weight_combo = positive_weight_people
+    non_target_combo = non_target_people
+    
+    print("\nTARGET_PAIRS:", ComboManager.TARGET_PAIRS)
+    print("Positive weight pair:", [p.name for p in positive_weight_combo], f"(weight: {positive_weight_pair['weight']})")
+    print("Non-target combo:", [p.name for p in non_target_combo])
+    
+    combinations = [non_target_combo, positive_weight_combo]
     sorted_combos = combo_manager.sort_combinations(combinations, current_shift=regular_shift)
     
-    assert sorted_combos[1] == non_target_combo
+    print("Sorted combos:", [[p.name for p in combo] for combo in sorted_combos])
+    
+    # Positive weight pair should come before non-target
+    assert sorted_combos[0] == positive_weight_combo, \
+        f"Expected positive weight pair {[p.name for p in positive_weight_combo]} to be first, " \
+        f"but got {[p.name for p in sorted_combos[0]]}"
+    assert sorted_combos[1] == non_target_combo, \
+        f"Expected non-target pair {[p.name for p in non_target_combo]} to be second, " \
+        f"but got {[p.name for p in sorted_combos[1]]}"
 
 def test_combined_scoring(combo_manager, target_names_people_with_same_constraint_score):
     """Test combination of target pairs and constraint scores"""
