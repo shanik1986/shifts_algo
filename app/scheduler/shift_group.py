@@ -149,26 +149,16 @@ class ShiftGroup:
             shift_type = shift.shift_type
             eligible_people = [p for p in people if p.is_eligible_for_shift(shift)]
             
-            try:
-                total_eligible_capacity = sum(
-                    p.constraint_scores[shift_type] 
-                    for p in eligible_people
-                )
-                if total_eligible_capacity < 0:
-                    raise ValueError(f"Found negative constraint score for shift type {shift_type}")
-            except KeyError as e:
-                # Find which person(s) are missing the constraint score
-                missing_score_people = [
-                    (p.name, list(p.constraint_scores.keys()))
-                    for p in eligible_people 
-                    if shift_type not in p.constraint_scores
-                ]
-                raise KeyError(
-                    f"Missing {shift_type} constraint score for people: {missing_score_people}"
-                ) from e
+            # Calculate total remaining capacity for this shift
+            total_eligible_capacity = sum(
+                p.get_capacity_by_type(shift_type)
+                for p in eligible_people
+            )
 
             # A capacity of 0 => infinite constraint_score
-            constraint_score = total_eligible_capacity / shift.needed if total_eligible_capacity > 0 else float('inf')
+            constraint_score = (total_eligible_capacity / shift.needed 
+                              if total_eligible_capacity > 0 
+                              else float('inf'))
             
             rankings.append((constraint_score, shift))
 
