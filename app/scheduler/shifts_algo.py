@@ -83,6 +83,9 @@ def backtrack_assign(remaining_shifts: List[Shift], shift_group: ShiftGroup,
     tested_combos = []
     remaining_combos = [[p.name for p in combo] for combo in sorted_combos]
     
+    # Introduce a flag to check if any solution was found at this depth
+    is_any_valid = False
+
     # Try all combinations of eligible people for this shift
     for combo in sorted_combos:
         debug_log(f"================================================")
@@ -111,6 +114,7 @@ def backtrack_assign(remaining_shifts: List[Shift], shift_group: ShiftGroup,
             )
             
             if result:
+                is_any_valid = True
                 return True, "success"
             
             # Undo the assignment before returning False
@@ -136,13 +140,21 @@ def backtrack_assign(remaining_shifts: List[Shift], shift_group: ShiftGroup,
         debug_log(f"  People's shift counts: {[(p.name, p.shift_counts) for p in shift_group.people]}")
         debug_log(f"  People's night counts: {[(p.name, p.night_counts) for p in shift_group.people]}")
         
-    debug_log(f"No valid combination found for {current_shift}. Backtracking...")
-    debug_log("=============================================================================")
-    debug_log(f"Undoing assignment for {current_shift}: {[p.name for p in combo]}")
-    debug_log(f"Current depth: {depth}")
-    debug_log("=============================================================================")
-    debug_log(f"Remaining shifts after all combinations of {current_shift} failed: {remaining_shifts}")
-    return False, "no_valid_combination"
+    # If no valid combination was found for the current shift
+    if not is_any_valid:
+        debug_log(f"No valid combination found for {current_shift}. Backtracking...")
+        debug_log("=============================================================================")
+        
+        # NEW: If this is the top-level shift, stop immediately instead of trying the next shift
+        if depth == 0:
+            debug_log("No valid combination for the top-level shift - returning immediately.")
+            return False, "no_valid_combination_for_first_shift"
+
+        debug_log(f"Undoing assignment for {current_shift}: {[p.name for p in combo]}")
+        debug_log(f"Current depth: {depth}")
+        debug_log("=============================================================================")
+        debug_log(f"Remaining shifts after all combinations of {current_shift} failed: {remaining_shifts}")
+        return False, "no_valid_combination"
 
 
 
