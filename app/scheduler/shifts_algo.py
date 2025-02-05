@@ -40,11 +40,16 @@ def validate_eligibility_for_remaining_shifts(remaining_shifts, shift_group):
 
 def backtrack_assign(remaining_shifts: List[Shift], shift_group: ShiftGroup,
                     max_depth: int = 10000, depth: int = 0, 
-                    cancel_event: threading.Event = None) -> Tuple[bool, str]:
+                    cancel_event: threading.Event = None,
+                    combinations_checked: list = None) -> Tuple[bool, str]:
     """
     Assign people to shifts using backtracking to ensure all constraints are satisfied.
     Returns: (bool, str) - (success, reason for failure if any)
     """
+    # Initialize combinations counter if this is the first call
+    if combinations_checked is None:
+        combinations_checked = [0]
+
     # Check for cancellation at the start of each recursive call
     if cancel_event and cancel_event.is_set():
         return False, "Algorithm cancelled"
@@ -88,6 +93,9 @@ def backtrack_assign(remaining_shifts: List[Shift], shift_group: ShiftGroup,
 
     # Try all combinations of eligible people for this shift
     for combo in sorted_combos:
+        # Increment the combinations counter
+        combinations_checked[0] += 1
+        
         debug_log(f"================================================")
         debug_log(f"{len(remaining_combos)} Remaining combos: {remaining_combos}")
         debug_log(f"{len(tested_combos)} Tested combos: {tested_combos}")
@@ -110,7 +118,9 @@ def backtrack_assign(remaining_shifts: List[Shift], shift_group: ShiftGroup,
         
         if validate_eligibility_for_remaining_shifts(ranked_shifts, shift_group):
             result, reason = backtrack_assign(
-                ranked_shifts, shift_group, max_depth=max_depth, depth=depth + 1, cancel_event=cancel_event
+                ranked_shifts, shift_group, max_depth=max_depth, 
+                depth=depth + 1, cancel_event=cancel_event,
+                combinations_checked=combinations_checked
             )
             
             if result:
@@ -185,26 +195,31 @@ def run_shift_algorithm(shift_group=None, timeout=None):
         # Sort shifts based on constraint level
         remaining_shifts = shift_group.rank_shifts(shift_group.people)
         
+        # Initialize combinations counter
+        combinations_checked = [0]
+        
         # Run the backtracking assignment
         max_depth = 10000
         success, reason = backtrack_assign(
             remaining_shifts, 
             shift_group,
             max_depth=max_depth,
-            cancel_event=cancel_event
+            cancel_event=cancel_event,
+            combinations_checked=combinations_checked
         )
         
         # Keep consistent return order throughout the function
-        return success, reason, shift_group
+        return success, reason, shift_group, combinations_checked[0]
 
     with ThreadPoolExecutor() as executor:
         future = executor.submit(algorithm_worker, shift_group)
         try:
-            success, reason, shift_group = future.result(timeout=timeout)
+            success, reason, shift_group, total_combinations = future.result(timeout=timeout)
             
             # Calculate execution time
             execution_time = time.time() - start_time
             print(f"\nScheduling algorithm completed in {execution_time:.2f} seconds")
+            print(f"Total combinations checked: {total_combinations}")
             
             if success:
                 # Create web interface dictionaries
