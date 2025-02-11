@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 class Person:
     """Represents a person who can be assigned to shifts"""
     name: str
-    unavailable: List[Shift]
+    blocked_shifts: Dict[Tuple[str, str], bool]
     double_shift: bool
     max_shifts: int
     max_nights: int
@@ -50,7 +50,7 @@ class Person:
     
     def is_shift_blocked(self, shift: Shift) -> bool:
         """Check if shift is in person's unavailable shifts"""
-        return shift in self.unavailable
+        return self.blocked_shifts.get(shift.key, False)
     
 
     def is_max_shifts_reached(self) -> bool:
