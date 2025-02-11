@@ -21,7 +21,7 @@ def parse_people_data(df: pd.DataFrame, shift_group: ShiftGroup, max_weekend: in
     people = []
     for _, row in df.iterrows():
         name = row["Name"]
-        unavailable = []
+        blocked_shifts = {}
         
         # Get availability from column names
         for day in VALID_DAYS:
@@ -31,12 +31,12 @@ def parse_people_data(df: pd.DataFrame, shift_group: ShiftGroup, max_weekend: in
                     original_col = column_map[column_key]
                     value = str(row[original_col]).strip().upper()
                     if value == "FALSE":
-                        unavailable.append(shift_group.get_shift(day, time))
+                        blocked_shifts[(day, time)] = True
 
         # Create Person object
         person = Person(
             name=row["Name"],
-            unavailable=unavailable,  # Will be converted to Shift objects later
+            blocked_shifts = blocked_shifts,
             double_shift=row["Double Shifts?"],
             max_shifts=int(row["Max Shifts"]),
             max_nights=int(row["Max Nights"]),
