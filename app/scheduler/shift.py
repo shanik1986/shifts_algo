@@ -70,6 +70,10 @@ class Shift:
                 if not shift.is_weekend_shift]
 
     @property
+    def key(self) -> tuple:
+        return (self.shift_day, self.shift_time)
+    
+    @property
     def previous_day(self) -> Optional[str]:
         """Get the previous day in the week sequence"""
         day_index = VALID_DAYS.index(self.shift_day)
