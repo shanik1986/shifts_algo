@@ -133,32 +133,32 @@ def test_target_names_sorting(combo_manager, target_names_people_with_same_const
 
     # Create a regular shift
     regular_shift = Shift("Monday", "Morning", group=ShiftGroup())
-    
+
     # Enable target pairs preference and disable constraint score to isolate the test
     combo_manager.preferences['preferred_people'] = True
     combo_manager.preferences['constraint_score'] = False
-    
+
     # Get highest and lowest weighted pairs
     highest_weight_pair = max(ComboManager.TARGET_PAIRS, key=lambda x: x['weight'])
     lowest_weight_pair = min(ComboManager.TARGET_PAIRS, key=lambda x: x['weight'])
-    
+
     # Create people for both pairs and non-target
     highest_weight_people = [
-        Person(name=name, unavailable=[], double_shift=False, 
-              max_shifts=10, max_nights=2, are_three_shifts_possible=True, 
+        Person(name=name, blocked_shifts={}, double_shift=False,
+              max_shifts=10, max_nights=2, are_three_shifts_possible=True,
               night_and_noon_possible=True)
         for name in highest_weight_pair['pair']
     ]
     
     lowest_weight_people = [
-        Person(name=name, unavailable=[], double_shift=False, 
-              max_shifts=10, max_nights=2, are_three_shifts_possible=True, 
+        Person(name=name, blocked_shifts={}, double_shift=False,
+              max_shifts=10, max_nights=2, are_three_shifts_possible=True,
               night_and_noon_possible=True)
         for name in lowest_weight_pair['pair']
     ]
     
     non_target_people = [
-        Person(name=f"NOT_TARGET_{i}", unavailable=[], double_shift=False,
+        Person(name=f"NOT_TARGET_{i}", blocked_shifts={}, double_shift=False,
               max_shifts=10, max_nights=2, are_three_shifts_possible=True,
               night_and_noon_possible=True)
         for i in range(1, 3)
@@ -215,14 +215,14 @@ def test_target_pairs_vs_non_pairs(combo_manager, target_names_people_with_same_
     
     # Create people for positive weight pair and non-target
     positive_weight_people = [
-        Person(name=name, unavailable=[], double_shift=False, 
+        Person(name=name, blocked_shifts={}, double_shift=False, 
               max_shifts=10, max_nights=2, are_three_shifts_possible=True, 
               night_and_noon_possible=True)
         for name in positive_weight_pair['pair']
     ]
     
     non_target_people = [
-        Person(name=f"NOT_TARGET_{i}", unavailable=[], double_shift=False,
+        Person(name=f"NOT_TARGET_{i}", blocked_shifts={}, double_shift=False,
               max_shifts=10, max_nights=2, are_three_shifts_possible=True,
               night_and_noon_possible=True)
         for i in range(1, 3)
@@ -322,7 +322,7 @@ def test_target_pairs_ignored_constraint_score_respected(combo_manager, target_n
     
     # Create two non-target people with better constraint scores
     default_args = {
-        'unavailable': [],
+        'blocked_shifts': {},
         'double_shift': False,
         'max_shifts': 10,
         'max_nights': 2,

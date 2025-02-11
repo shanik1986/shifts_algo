@@ -173,18 +173,18 @@ def test_shift_assignments(complete_shift_group):
     
     person1 = Person(
         name="Person 1",
-        unavailable=[],  # No unavailable shifts
-        double_shift=True,  # Can work consecutive shifts
-        max_shifts=5,  # Can work up to 5 shifts
-        max_nights=2,  # Can work up to 2 night shifts
-        are_three_shifts_possible=True,  # Can work three shifts in a day
-        night_and_noon_possible=True,  # Can work noon after night
-        max_weekend_shifts=1  # Can work one weekend shift
+        blocked_shifts={},  # No blocked shifts
+        double_shift=True,
+        max_shifts=5,
+        max_nights=2,
+        are_three_shifts_possible=True,
+        night_and_noon_possible=True,
+        max_weekend_shifts=1
     )
     
     person2 = Person(
         name="Person 2",
-        unavailable=[],
+        blocked_shifts={},
         double_shift=True,
         max_shifts=5,
         max_nights=2,

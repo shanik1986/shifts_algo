@@ -7,13 +7,20 @@ from app.scheduler.shift_group import ShiftGroup
 def test_shift_blocking(sample_person):
     """Test shift blocking using Shift objects"""
     temp_group = ShiftGroup()
-    assert sample_person.is_shift_blocked(
-        Shift("Last Saturday", "Night", group=temp_group)) == True
-    assert sample_person.is_shift_blocked(Shift("Sunday", "Morning", group=temp_group)) == True
+    
+    # Test blocked shifts
+    blocked_shift = Shift("Last Saturday", "Night", group=temp_group)
+    assert sample_person.is_shift_blocked(blocked_shift) == True
+    
+    blocked_morning = Shift("Sunday", "Morning", group=temp_group)
+    assert sample_person.is_shift_blocked(blocked_morning) == True
     
     # Test available shifts
-    assert sample_person.is_shift_blocked(Shift("Sunday", "Noon", group=temp_group)) == False
-    assert sample_person.is_shift_blocked(Shift("Monday", "Morning", group=temp_group)) == False
+    available_shift = Shift("Sunday", "Noon", group=temp_group)
+    assert sample_person.is_shift_blocked(available_shift) == False
+    
+    available_morning = Shift("Monday", "Morning", group=temp_group)
+    assert sample_person.is_shift_blocked(available_morning) == False
 
 def test_shift_assignment_and_unassignment(sample_person, complete_shift_group):
     shift = Shift("Sunday", "Noon", group=complete_shift_group)
@@ -96,7 +103,7 @@ def test_max_nights_constraint(sample_person, complete_shift_group):
 def test_weekend_shift_limitation(sample_person, complete_shift_group):
     person = Person(
         name="Test Person",
-        unavailable=[],
+        blocked_shifts={},
         double_shift=True,
         max_shifts=10,
         max_nights=5,

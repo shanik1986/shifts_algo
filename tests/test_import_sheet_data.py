@@ -54,24 +54,25 @@ def test_person_attributes(sample_person_from_sheet):
     
     # Create a temporary group for comparison
     temp_group = ShiftGroup()
-    expected_unavailable = [
-        Shift("Last Saturday", "Night", group=temp_group),
-        Shift("Sunday", "Morning", group=temp_group),
-        Shift("Monday", "Noon", group=temp_group),
-        Shift("Tuesday", "Evening", group=temp_group),
-        Shift("Wednesday", "Night", group=temp_group),
-        Shift("Thursday", "Morning", group=temp_group),
-        Shift("Friday", "Noon", group=temp_group),
-        Shift("Saturday", "Evening", group=temp_group)
-    ]
+    expected_blocked_shifts = {
+        ("Last Saturday", "Night"): True,
+        ("Sunday", "Morning"): True,
+        ("Monday", "Noon"): True,
+        ("Tuesday", "Evening"): True,
+        ("Wednesday", "Night"): True,
+        ("Thursday", "Morning"): True,
+        ("Friday", "Noon"): True,
+        ("Saturday", "Evening"): True
+    }
     
     # Debug prints
-    print("\nExpected unavailable shifts:")
-    for shift in expected_unavailable:
-        print(f"  {shift.shift_day} {shift.shift_time}")
+    print("\nExpected blocked shifts:")
+    for day, time in expected_blocked_shifts:
+        print(f"  {day} {time}")
     
-    print("\nActual unavailable shifts:")
-    for shift in sample_person_from_sheet.unavailable:
-        print(f"  {shift.shift_day} {shift.shift_time}")
+    print("\nActual blocked shifts:")
+    for (day, time), is_blocked in sample_person_from_sheet.blocked_shifts.items():
+        if is_blocked:
+            print(f"  {day} {time}")
         
-    assert set(sample_person_from_sheet.unavailable) == set(expected_unavailable)
+    assert sample_person_from_sheet.blocked_shifts == expected_blocked_shifts

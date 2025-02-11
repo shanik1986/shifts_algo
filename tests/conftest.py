@@ -77,7 +77,7 @@ def sample_person_with_constraints():
     """
     return Person(
         name="Constrainned Person",
-        unavailable=[],
+        blocked_shifts={},
         double_shift=False,
         max_shifts=10,
         max_nights=1,
@@ -96,7 +96,7 @@ def sample_person_with_no_constraints():
     """
     return Person(
         name="No Constraints Person",
-        unavailable=[],
+        blocked_shifts={},
         double_shift=True,
         max_shifts=10,
         max_nights=2,
@@ -108,23 +108,20 @@ def sample_person_with_no_constraints():
 @pytest.fixture
 def sample_person(complete_shift_group):
     """Creates a fixture Person object with predefined constraints"""
-    unavailable_shifts = [
-        shift for shift in complete_shift_group.shifts 
-        if (shift.shift_day, shift.shift_time) in [
-            ("Last Saturday", "Night"),
-            ("Sunday", "Morning"),
-            ("Monday", "Noon"),
-            ("Tuesday", "Evening"),
-            ("Wednesday", "Night"),
-            ("Thursday", "Morning"),
-            ("Friday", "Noon"),
-            ("Saturday", "Evening")
-        ]
-    ]
+    blocked_shifts = {
+        ("Last Saturday", "Night"): True,
+        ("Sunday", "Morning"): True,
+        ("Monday", "Noon"): True,
+        ("Tuesday", "Evening"): True,
+        ("Wednesday", "Night"): True,
+        ("Thursday", "Morning"): True,
+        ("Friday", "Noon"): True,
+        ("Saturday", "Evening"): True
+    }
     
     return Person(
         name="Random Person 1",
-        unavailable=unavailable_shifts,
+        blocked_shifts=blocked_shifts,
         double_shift=False,
         max_shifts=5,
         max_nights=2,
@@ -139,7 +136,7 @@ def sample_people():
     # Create test people with different constraint scores
     p1 = Person(
         "Alice", 
-        unavailable=[], 
+        blocked_shifts={}, 
         double_shift=False, 
         max_shifts=10, 
         max_nights=2, 
@@ -149,7 +146,7 @@ def sample_people():
 
     p2 = Person(
         "Bob", 
-        unavailable=[], 
+        blocked_shifts={}, 
         double_shift=False, 
         max_shifts=10, 
         max_nights=2, 
@@ -158,7 +155,7 @@ def sample_people():
         )
     p3 = Person(
         "Charlie", 
-        unavailable=[], 
+        blocked_shifts={}, 
         double_shift=False, 
         max_shifts=10, 
         max_nights=2, 
@@ -167,7 +164,7 @@ def sample_people():
         )
     p4 = Person(
         "David", 
-        unavailable=[], 
+        blocked_shifts={}, 
         double_shift=False, 
         max_shifts=10, 
         max_nights=2, 
@@ -176,7 +173,7 @@ def sample_people():
         )
     p5 = Person(
         "Ethan", 
-        unavailable=[], 
+        blocked_shifts={}, 
         double_shift=False, 
         max_shifts=10, 
         max_nights=2, 
@@ -223,7 +220,7 @@ def target_names_people_with_same_constraint_score():
     are distinct by using 'NOT_TARGET_' prefix.
     """
     default_args = {
-        'unavailable': [],
+        'blocked_shifts': {},
         'double_shift': False,
         'max_shifts': 10,
         'max_nights': 2,
@@ -252,7 +249,7 @@ def target_names_people_with_same_constraint_score():
 def double_shift_people():
     """Create test people with different double shift capabilities"""
     default_args = {
-        'unavailable': [],
+        'blocked_shifts': {},
         'max_shifts': 10,
         'max_nights': 2,
         'are_three_shifts_possible': True,
